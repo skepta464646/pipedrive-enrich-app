@@ -13,6 +13,41 @@ export default async function handler(req, res) {
   const PD_TOKEN = process.env.PIPEDRIVE_API_TOKEN;
   const PD_DOMAIN = process.env.PIPEDRIVE_DOMAIN;
 
+  // ─── LinkedIn validator ───────────────────────────────────────────────────
+  const INVALID_SLUGS = ['unavailable','login','authwall','404','null','undefined','company'];
+  
+  async function validateLinkedIn(url) {
+    if (!url) return '';
+    // Clean URL
+    const clean = url.trim().split('?')[0].replace(/\/$/, '');
+    if (!clean.includes('linkedin.com/company/')) return '';
+    
+    // Extract slug
+    const slug = clean.split('linkedin.com/company/')[1]?.split('/')[0];
+    if (!slug || INVALID_SLUGS.includes(slug.toLowerCase())) return '';
+    
+    // Build clean URL
+    const finalUrl = `https://www.linkedin.com/company/${slug}/`;
+    
+    // Validate with HEAD request
+    try {
+      const r = await fetch(finalUrl, {
+        method: 'HEAD',
+        headers: { 'User-Agent': 'Mozilla/5.0' },
+        signal: AbortSignal.timeout(5000),
+        redirect: 'follow'
+      });
+      // LinkedIn returns 200 or 302 for valid pages, 404 for invalid
+      if (r.status === 404) return '';
+      // Check if redirected to /unavailable/
+      if (r.url?.includes('unavailable')) return '';
+      return finalUrl;
+    } catch {
+      // If validation fails, still return URL (better than empty)
+      return finalUrl;
+    }
+  }
+
   // ─── Step 1: Scrape website ───────────────────────────────────────────────
   let scraped = { email: '', linkedin: '', phone: '', html_text: '' };
 
@@ -30,16 +65,21 @@ export default async function handler(req, res) {
                        .replace(/\s+/g, ' ')
                        .substring(0, 4000);
 
+      // Emails
       const genericDomains = ['gmail','yahoo','hotmail','outlook','example','sentry','wix','wp','noreply','cloudflare','w3.org','schema'];
       const emails = [...new Set((html.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g) || [])
         .filter(e => !genericDomains.some(d => e.toLowerCase().includes(d))))];
 
-      // Only trust LinkedIn URLs found directly on the website
-      const linkedinMatch = html.match(/https?:\/\/(www\.)?linkedin\.com\/company\/[a-zA-Z0-9_%-]+/i);
+      // LinkedIn - search in href AND plain text
+      const linkedinFromHref = html.match(/href=["'][^"']*linkedin\.com\/company\/([a-zA-Z0-9_%-]+)/i);
+      const linkedinFromText = html.match(/linkedin\.com\/company\/([a-zA-Z0-9_%-]+)/i);
+      const linkedinSlug = linkedinFromHref?.[1] || linkedinFromText?.[1] || '';
+      const linkedinRaw = linkedinSlug ? `https://www.linkedin.com/company/${linkedinSlug}/` : '';
 
+      // Phone
       const phoneMatches = html.match(/(\+[\d\s\-().]{8,18}[\d])/g) || [];
       const cleanPhone = phoneMatches
-        .map(p => p.trim().replace(/\s+/g, ' '))
+        .map(p => p.trim())
         .filter(p => {
           const digits = p.replace(/\D/g, '');
           return digits.length >= 8 && digits.length <= 15;
@@ -47,7 +87,7 @@ export default async function handler(req, res) {
 
       scraped = {
         email: emails[0] || '',
-        linkedin: linkedinMatch?.[0]?.split('?')[0] || '',
+        linkedin_raw: linkedinRaw,
         phone: cleanPhone,
         html_text: text
       };
@@ -70,7 +110,7 @@ export default async function handler(req, res) {
         max_tokens: 1200,
         messages: [{
           role: 'user',
-          content: `You are a B2B healthcare CRM data specialist. Analyze this company and fill ALL fields you can determine with HIGH confidence. Do not guess - leave empty string or 0 if unsure.
+          content: `You are a B2B healthcare CRM data specialist. Analyze this company carefully.
 
 Company name: ${name}
 Website: ${website || 'unknown'}
@@ -81,7 +121,7 @@ Found phone: ${scraped.phone || 'none'}
 Return ONLY valid JSON (no markdown, no explanation):
 {
   "industry": <11=Hospitals & Health Care, 14=Professional Services, 17=Technology, 12=Manufacturing, 16=Retail, 18=Transportation, or 0 if unknown>,
-  "annual_revenue": <2=1-10M USD, 3=10-100M USD, 4=100-1000M USD, 5=1-10B USD, or 0 if unknown - do NOT use 1>,
+  "annual_revenue": <2=1-10M USD, 3=10-100M USD, 4=100-1000M USD, 5=1-10B USD, or 0 if unknown>,
   "employee_count": <exact number if clearly stated in website content, or 0>,
   "employees_category": <49=1-10, 50=11-50, 51=51-200, 52=201-500, 53=501-1000, 54=1001-5000, 55=5001-10000, 56=10001+, or 0 if unknown>,
   "icp": <64=Yes, 65=No, 371=No-too small, 66=? if unsure>,
@@ -97,6 +137,7 @@ Return ONLY valid JSON (no markdown, no explanation):
   "address": "full street address only if found in website content, or empty string",
   "vat": "VAT number only if found in website content, or empty string",
   "registration_number": "company registration number only if found in website content, or empty string",
+  "linkedin_url": "IMPORTANT: Use your training knowledge to find the exact LinkedIn company URL. Format: https://www.linkedin.com/company/SLUG/ — Examples: Karolinska University Hospital = https://www.linkedin.com/company/karolinska-university-hospital/, Medicover = https://www.linkedin.com/company/medicover/, Capio = https://www.linkedin.com/company/capio-group/, Make.com = https://www.linkedin.com/company/make-apps/. Return empty string ONLY if you have zero knowledge of this company.",
   "number_of_beds": 0,
   "number_of_branches": 0,
   "number_of_specialists": 0,
@@ -114,10 +155,22 @@ Return ONLY valid JSON (no markdown, no explanation):
     return res.status(500).json({ error: 'AI failed: ' + e.message });
   }
 
-  // ─── Step 3: Build Pipedrive payload ──────────────────────────────────────
+  // ─── Step 3: Validate LinkedIn (scraping first, AI fallback) ─────────────
+  let finalLinkedin = '';
+  
+  // Try scraping result first
+  if (scraped.linkedin_raw) {
+    finalLinkedin = await validateLinkedIn(scraped.linkedin_raw);
+  }
+  
+  // Fallback to AI result if scraping found nothing valid
+  if (!finalLinkedin && enriched.linkedin_url) {
+    finalLinkedin = await validateLinkedIn(enriched.linkedin_url);
+  }
+
+  // ─── Step 4: Build Pipedrive payload ──────────────────────────────────────
   const finalPhone = scraped.phone || '';
   const finalEmail = scraped.email || '';
-  const finalLinkedin = scraped.linkedin || ''; // Only from scraping - AI guesses unreliable
   const finalAddress = enriched.address || '';
 
   const payload = {};
@@ -125,7 +178,6 @@ Return ONLY valid JSON (no markdown, no explanation):
     if (val !== undefined && val !== null && val !== '' && val !== 0) payload[key] = val;
   };
 
-  // Standard fields
   if (enriched.industry) payload.industry = enriched.industry;
   if (enriched.annual_revenue && enriched.annual_revenue > 1) payload.annual_revenue = enriched.annual_revenue;
   if (enriched.employee_count > 0) payload.employee_count = enriched.employee_count;
@@ -133,7 +185,6 @@ Return ONLY valid JSON (no markdown, no explanation):
   if (finalPhone) payload.phone = [{ value: finalPhone, primary: true, label: 'work' }];
   if (finalAddress) payload.address = { value: finalAddress };
 
-  // Custom fields
   set('0d5afcefbd6ada8781d38fe74873d4b308234a49', enriched.icp);
   set('5b6f71999f89a4ac00ed32f8bd49bc8480bf459d', enriched.ownership);
   set('ef79b1ce2c6860be02443dd9728ad62dd4f8b18c', enriched.icp_type);
@@ -156,7 +207,7 @@ Return ONLY valid JSON (no markdown, no explanation):
   if (enriched.number_of_branches > 0) payload['bdc6f4f7031fa45a45aa4cd4cd3014f66f9847cf'] = enriched.number_of_branches;
   if (enriched.number_of_specialists > 0) payload['598c7ea3d04ce28a52985dc15a7f74cb6ff977f3'] = enriched.number_of_specialists;
 
-  // ─── Step 4: Update Pipedrive ────────────────────────────────────────────
+  // ─── Step 5: Update Pipedrive ────────────────────────────────────────────
   const pdRes = await fetch(
     `https://${PD_DOMAIN}.pipedrive.com/api/v1/organizations/${organizationId}?api_token=${PD_TOKEN}`,
     { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }
@@ -164,7 +215,7 @@ Return ONLY valid JSON (no markdown, no explanation):
   const pdData = await pdRes.json();
   if (!pdData.success) console.error('Pipedrive error:', JSON.stringify(pdData));
 
-  // ─── Step 5: Add note only if no AI note exists yet ───────────────────────
+  // ─── Step 6: Add note only if no AI note exists yet ──────────────────────
   if (enriched.company_overview) {
     const existingNotes = await fetch(
       `https://${PD_DOMAIN}.pipedrive.com/api/v1/notes?api_token=${PD_TOKEN}&org_id=${organizationId}&limit=10`
@@ -187,8 +238,9 @@ Return ONLY valid JSON (no markdown, no explanation):
   return res.status(200).json({
     success: true,
     fields_filled: Object.keys(payload).length,
+    linkedin_found: !!finalLinkedin,
     sources: {
-      web_scraping: !!(scraped.email || scraped.phone || scraped.linkedin),
+      web_scraping: !!(scraped.email || scraped.phone || scraped.linkedin_raw),
       ai: true
     }
   });

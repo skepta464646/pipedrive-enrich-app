@@ -99,8 +99,7 @@ Return ONLY valid JSON (no markdown, no explanation):
   "address": "full street address if found in website content, or empty string",
   "vat": "VAT number if found in website content, or empty string",
   "registration_number": "company registration number if found in website content, or empty string",
-  "linkedin_url": "https://linkedin.com/company/... if determinable from company name, or empty string",
-  "number_of_beds": 0,
+"linkedin_url": "https://www.linkedin.com/company/SLUG/ - find the correct LinkedIn company page URL from your knowledge. For example: make.com = https://www.linkedin.com/company/make-apps/, medicover = https://www.linkedin.com/company/medicover/. Try hard to find it - most known companies have LinkedIn. Return empty string only if truly unknown.",  "number_of_beds": 0,
   "number_of_branches": 0,
   "number_of_specialists": 0,
   "company_overview": "2-3 sentence description of what this company does, who they serve, and their key services"

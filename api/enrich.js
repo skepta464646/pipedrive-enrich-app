@@ -30,15 +30,13 @@ export default async function handler(req, res) {
                        .replace(/\s+/g, ' ')
                        .substring(0, 4000);
 
-      // Emails
       const genericDomains = ['gmail','yahoo','hotmail','outlook','example','sentry','wix','wp','noreply','cloudflare','w3.org','schema'];
       const emails = [...new Set((html.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g) || [])
         .filter(e => !genericDomains.some(d => e.toLowerCase().includes(d))))];
 
-      // LinkedIn company URL
+      // Only trust LinkedIn URLs found directly on the website
       const linkedinMatch = html.match(/https?:\/\/(www\.)?linkedin\.com\/company\/[a-zA-Z0-9_%-]+/i);
 
-      // Phone - strict pattern: must start with + or have country code format
       const phoneMatches = html.match(/(\+[\d\s\-().]{8,18}[\d])/g) || [];
       const cleanPhone = phoneMatches
         .map(p => p.trim().replace(/\s+/g, ' '))
@@ -72,7 +70,7 @@ export default async function handler(req, res) {
         max_tokens: 1200,
         messages: [{
           role: 'user',
-          content: `You are a B2B healthcare CRM data specialist. Analyze this company carefully and fill ALL fields you can determine with HIGH confidence. Do not guess - leave empty string or 0 if unsure.
+          content: `You are a B2B healthcare CRM data specialist. Analyze this company and fill ALL fields you can determine with HIGH confidence. Do not guess - leave empty string or 0 if unsure.
 
 Company name: ${name}
 Website: ${website || 'unknown'}
@@ -83,23 +81,23 @@ Found phone: ${scraped.phone || 'none'}
 Return ONLY valid JSON (no markdown, no explanation):
 {
   "industry": <11=Hospitals & Health Care, 14=Professional Services, 17=Technology, 12=Manufacturing, 16=Retail, 18=Transportation, or 0 if unknown>,
-  "annual_revenue": <1=under 1M, 2=1-10M USD, 3=10-100M USD, 4=100-1000M USD, 5=1-10B USD, or 0 if unknown>,
-  "employee_count": <exact number if known from website content, or 0>,
+  "annual_revenue": <2=1-10M USD, 3=10-100M USD, 4=100-1000M USD, 5=1-10B USD, or 0 if unknown - do NOT use 1>,
+  "employee_count": <exact number if clearly stated in website content, or 0>,
   "employees_category": <49=1-10, 50=11-50, 51=51-200, 52=201-500, 53=501-1000, 54=1001-5000, 55=5001-10000, 56=10001+, or 0 if unknown>,
-  "icp": <64=Yes, 65=No, 371=No-too small, 66=?, default 66>,
+  "icp": <64=Yes, 65=No, 371=No-too small, 66=? if unsure>,
   "ownership": <1014=Private, 1015=Public, 1016=Unknown>,
   "icp_type": <1017=Hospital, 935=Clinic/Polyclinic, 1018=Specialist Practice, 520=Dental Clinic, 932=Diagnostic Center & Laboratory, 939=HIS Software Provider, 937=Nursing Home/Long-term Care, 936=Dialysis Clinic, 1019=Physiotherapy Clinic, 1020=Aesthetic & Plastic Surgery, 1021=Ophthalmology Clinic, 1022=Radiology Center, 1023=Rehabilitation Center, 1024=Mental Health Clinic, 934=Maternity and IVF Clinic, 931=Home Care, 1028=Unknown>,
   "qualify_status": <62=Qualified with contact, 63=Qualified with contact+email, 61=Qualified no contact, 57=To qualify>,
   "org_source": 546,
   "icp_ecosystem": <854=Healthcare ecosystem, 855=Healthcare software vendors, or 0>,
   "his_identification": <850=Yes, 851=No>,
-  "company_legal_name": "official legal name with legal form (Ltd, GmbH, UAB, S.A., Sp. z o.o. etc) or empty string",
+  "company_legal_name": "official legal name with legal form (Ltd, GmbH, UAB, S.A., AB etc) or empty string",
   "his_software_name": "name of HIS/RIS/LIS/PACS software if they sell or use one, or empty string",
-  "ceo_name": "CEO or founder full name if found in website content, or empty string",
-  "address": "full street address if found in website content, or empty string",
-  "vat": "VAT number if found in website content, or empty string",
-  "registration_number": "company registration number if found in website content, or empty string",
-"linkedin_url": "https://www.linkedin.com/company/SLUG/ - find the correct LinkedIn company page URL from your knowledge. For example: make.com = https://www.linkedin.com/company/make-apps/, medicover = https://www.linkedin.com/company/medicover/. Try hard to find it - most known companies have LinkedIn. Return empty string only if truly unknown.",  "number_of_beds": 0,
+  "ceo_name": "CEO or founder full name only if found in website content, or empty string",
+  "address": "full street address only if found in website content, or empty string",
+  "vat": "VAT number only if found in website content, or empty string",
+  "registration_number": "company registration number only if found in website content, or empty string",
+  "number_of_beds": 0,
   "number_of_branches": 0,
   "number_of_specialists": 0,
   "company_overview": "2-3 sentence description of what this company does, who they serve, and their key services"
@@ -119,7 +117,7 @@ Return ONLY valid JSON (no markdown, no explanation):
   // ─── Step 3: Build Pipedrive payload ──────────────────────────────────────
   const finalPhone = scraped.phone || '';
   const finalEmail = scraped.email || '';
-  const finalLinkedin = scraped.linkedin || enriched.linkedin_url || '';
+  const finalLinkedin = scraped.linkedin || ''; // Only from scraping - AI guesses unreliable
   const finalAddress = enriched.address || '';
 
   const payload = {};
@@ -131,7 +129,7 @@ Return ONLY valid JSON (no markdown, no explanation):
   if (enriched.industry) payload.industry = enriched.industry;
   if (enriched.annual_revenue && enriched.annual_revenue > 1) payload.annual_revenue = enriched.annual_revenue;
   if (enriched.employee_count > 0) payload.employee_count = enriched.employee_count;
-  // Validate LinkedIn URL format before saving if (finalLinkedin && finalLinkedin.includes('linkedin.com/company/') && !finalLinkedin.includes('unavailable')) {   payload.linkedin = finalLinkedin; }
+  if (finalLinkedin) payload.linkedin = finalLinkedin;
   if (finalPhone) payload.phone = [{ value: finalPhone, primary: true, label: 'work' }];
   if (finalAddress) payload.address = { value: finalAddress };
 
@@ -144,10 +142,10 @@ Return ONLY valid JSON (no markdown, no explanation):
   set('95d37d3df1ed511ae90f7fac64eac37a20f4ed83', enriched.org_source);
   set('e37b931ae0af55393fc51f1b2135c2355b4bea12', enriched.icp_ecosystem);
   set('bb5ec6a8351b0d3423011da1f8dbfd89d8590b27', enriched.his_identification);
-  set('0139565cc0f6a8dcc0cae8244b672600adf64860', finalLinkedin);        // Company LinkedIn URL
-  set('783923cad610ca666dc3ddac86085a6468c7b809', website || '');         // Website (custom)
-  set('99c1cffae1ed208819f80c4c3a1b545d461082bb', finalPhone);            // Phone (custom)
-  set('b83bf5f8378a2275b475db4dc64b1101ea48836a', finalEmail);            // Company mail
+  set('0139565cc0f6a8dcc0cae8244b672600adf64860', finalLinkedin);
+  set('783923cad610ca666dc3ddac86085a6468c7b809', website || '');
+  set('99c1cffae1ed208819f80c4c3a1b545d461082bb', finalPhone);
+  set('b83bf5f8378a2275b475db4dc64b1101ea48836a', finalEmail);
   set('b4c2b2ef4b92a130ec7de91f4d17622d5640431e', enriched.company_legal_name);
   set('115cfff712c6caf184d7c155838a9dace81e8821', enriched.his_software_name);
   set('4107458f7b06285686f1968fbefa9ea50902cf07', enriched.ceo_name);
@@ -166,16 +164,24 @@ Return ONLY valid JSON (no markdown, no explanation):
   const pdData = await pdRes.json();
   if (!pdData.success) console.error('Pipedrive error:', JSON.stringify(pdData));
 
-  // Add note
+  // ─── Step 5: Add note only if no AI note exists yet ───────────────────────
   if (enriched.company_overview) {
-    await fetch(`https://${PD_DOMAIN}.pipedrive.com/api/v1/notes?api_token=${PD_TOKEN}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        content: `🤖 AI Enrichment\n\n${enriched.company_overview}`,
-        org_id: organizationId
-      })
-    });
+    const existingNotes = await fetch(
+      `https://${PD_DOMAIN}.pipedrive.com/api/v1/notes?api_token=${PD_TOKEN}&org_id=${organizationId}&limit=10`
+    ).then(r => r.json());
+    
+    const hasAiNote = existingNotes.data?.some(n => n.content?.includes('🤖 AI Enrichment'));
+    
+    if (!hasAiNote) {
+      await fetch(`https://${PD_DOMAIN}.pipedrive.com/api/v1/notes?api_token=${PD_TOKEN}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          content: `🤖 AI Enrichment\n\n${enriched.company_overview}`,
+          org_id: organizationId
+        })
+      });
+    }
   }
 
   return res.status(200).json({

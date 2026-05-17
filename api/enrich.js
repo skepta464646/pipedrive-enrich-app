@@ -129,9 +129,9 @@ Return ONLY valid JSON (no markdown, no explanation):
 
   // Standard fields
   if (enriched.industry) payload.industry = enriched.industry;
-  if (enriched.annual_revenue) payload.annual_revenue = enriched.annual_revenue;
+  if (enriched.annual_revenue && enriched.annual_revenue > 1) payload.annual_revenue = enriched.annual_revenue;
   if (enriched.employee_count > 0) payload.employee_count = enriched.employee_count;
-  if (finalLinkedin) payload.linkedin = finalLinkedin;
+  // Validate LinkedIn URL format before saving if (finalLinkedin && finalLinkedin.includes('linkedin.com/company/') && !finalLinkedin.includes('unavailable')) {   payload.linkedin = finalLinkedin; }
   if (finalPhone) payload.phone = [{ value: finalPhone, primary: true, label: 'work' }];
   if (finalAddress) payload.address = { value: finalAddress };
 

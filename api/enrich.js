@@ -13,23 +13,31 @@ export default async function handler(req, res) {
   const PD_TOKEN = process.env.PIPEDRIVE_API_TOKEN;
   const PD_DOMAIN = process.env.PIPEDRIVE_DOMAIN;
 
+  // ─── Step 0: Get existing org data from Pipedrive ─────────────────────────
+  let existing = {};
+  try {
+    const existingRes = await fetch(
+      `https://${PD_DOMAIN}.pipedrive.com/api/v1/organizations/${organizationId}?api_token=${PD_TOKEN}`
+    );
+    const existingData = await existingRes.json();
+    if (existingData.success) existing = existingData.data || {};
+  } catch (e) {
+    console.error('Failed to get existing org:', e.message);
+  }
+
+  // Helper: check if a field is already filled
+  const isEmpty = (val) => val === null || val === undefined || val === '' || val === 0 || val === false;
+
   // ─── LinkedIn validator ───────────────────────────────────────────────────
   const INVALID_SLUGS = ['unavailable','login','authwall','404','null','undefined','company'];
   
   async function validateLinkedIn(url) {
     if (!url) return '';
-    // Clean URL
     const clean = url.trim().split('?')[0].replace(/\/$/, '');
     if (!clean.includes('linkedin.com/company/')) return '';
-    
-    // Extract slug
     const slug = clean.split('linkedin.com/company/')[1]?.split('/')[0];
     if (!slug || INVALID_SLUGS.includes(slug.toLowerCase())) return '';
-    
-    // Build clean URL
     const finalUrl = `https://www.linkedin.com/company/${slug}/`;
-    
-    // Validate with HEAD request
     try {
       const r = await fetch(finalUrl, {
         method: 'HEAD',
@@ -37,60 +45,45 @@ export default async function handler(req, res) {
         signal: AbortSignal.timeout(5000),
         redirect: 'follow'
       });
-      // LinkedIn returns 200 or 302 for valid pages, 404 for invalid
-      if (r.status === 404) return '';
-      // Check if redirected to /unavailable/
-      if (r.url?.includes('unavailable')) return '';
+      if (r.status === 404 || r.url?.includes('unavailable')) return '';
       return finalUrl;
     } catch {
-      // If validation fails, still return URL (better than empty)
       return finalUrl;
     }
   }
 
   // ─── Step 1: Scrape website ───────────────────────────────────────────────
-  let scraped = { email: '', linkedin: '', phone: '', html_text: '' };
+  let scraped = { email: '', linkedin_raw: '', phone: '', html_text: '' };
+  const siteUrl = website || existing.website || '';
 
-  if (website) {
+  if (siteUrl) {
     try {
-      const r = await fetch(website, {
+      const r = await fetch(siteUrl, {
         headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' },
         signal: AbortSignal.timeout(10000)
       });
       const html = await r.text();
-
       const text = html.replace(/<script[\s\S]*?<\/script>/gi, '')
                        .replace(/<style[\s\S]*?<\/style>/gi, '')
                        .replace(/<[^>]+>/g, ' ')
                        .replace(/\s+/g, ' ')
                        .substring(0, 4000);
 
-      // Emails
       const genericDomains = ['gmail','yahoo','hotmail','outlook','example','sentry','wix','wp','noreply','cloudflare','w3.org','schema'];
       const emails = [...new Set((html.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g) || [])
         .filter(e => !genericDomains.some(d => e.toLowerCase().includes(d))))];
 
-      // LinkedIn - search in href AND plain text
       const linkedinFromHref = html.match(/href=["'][^"']*linkedin\.com\/company\/([a-zA-Z0-9_%-]+)/i);
       const linkedinFromText = html.match(/linkedin\.com\/company\/([a-zA-Z0-9_%-]+)/i);
       const linkedinSlug = linkedinFromHref?.[1] || linkedinFromText?.[1] || '';
       const linkedinRaw = linkedinSlug ? `https://www.linkedin.com/company/${linkedinSlug}/` : '';
 
-      // Phone
       const phoneMatches = html.match(/(\+[\d\s\-().]{8,18}[\d])/g) || [];
       const cleanPhone = phoneMatches
         .map(p => p.trim())
-        .filter(p => {
-          const digits = p.replace(/\D/g, '');
-          return digits.length >= 8 && digits.length <= 15;
-        })[0] || '';
+        .filter(p => { const d = p.replace(/\D/g, ''); return d.length >= 8 && d.length <= 15; })[0] || '';
 
-      scraped = {
-        email: emails[0] || '',
-        linkedin_raw: linkedinRaw,
-        phone: cleanPhone,
-        html_text: text
-      };
+      scraped = { email: emails[0] || '', linkedin_raw: linkedinRaw, phone: cleanPhone, html_text: text };
     } catch (e) {
       console.error('Scraping error:', e.message);
     }
@@ -101,10 +94,7 @@ export default async function handler(req, res) {
   try {
     const groqRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${GROQ_KEY}`
-      },
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${GROQ_KEY}` },
       body: JSON.stringify({
         model: 'llama-3.3-70b-versatile',
         max_tokens: 1200,
@@ -113,7 +103,7 @@ export default async function handler(req, res) {
           content: `You are a B2B healthcare CRM data specialist. Analyze this company carefully.
 
 Company name: ${name}
-Website: ${website || 'unknown'}
+Website: ${siteUrl || 'unknown'}
 Website content: ${scraped.html_text || 'not available'}
 Found email: ${scraped.email || 'none'}
 Found phone: ${scraped.phone || 'none'}
@@ -131,13 +121,13 @@ Return ONLY valid JSON (no markdown, no explanation):
   "org_source": 546,
   "icp_ecosystem": <854=Healthcare ecosystem, 855=Healthcare software vendors, or 0>,
   "his_identification": <850=Yes, 851=No>,
-  "company_legal_name": "official legal name with legal form (Ltd, GmbH, UAB, S.A., AB etc) or empty string",
-  "his_software_name": "name of HIS/RIS/LIS/PACS software if they sell or use one, or empty string",
-  "ceo_name": "CEO or founder full name only if found in website content, or empty string",
+  "company_legal_name": "official legal name with legal form or empty string",
+  "his_software_name": "HIS/RIS/LIS/PACS software name or empty string",
+  "ceo_name": "CEO full name only if found in website content, or empty string",
   "address": "full street address only if found in website content, or empty string",
   "vat": "VAT number only if found in website content, or empty string",
-  "registration_number": "company registration number only if found in website content, or empty string",
-  "linkedin_url": "IMPORTANT: Use your training knowledge to find the exact LinkedIn company URL. Format: https://www.linkedin.com/company/SLUG/ — Examples: Karolinska University Hospital = https://www.linkedin.com/company/karolinska-university-hospital/, Medicover = https://www.linkedin.com/company/medicover/, Capio = https://www.linkedin.com/company/capio-group/, Make.com = https://www.linkedin.com/company/make-apps/. Return empty string ONLY if you have zero knowledge of this company.",
+  "registration_number": "registration number only if found in website content, or empty string",
+  "linkedin_url": "Find the EXACT official LinkedIn company URL from your training knowledge. Format: https://www.linkedin.com/company/SLUG/ — return empty string ONLY if you have zero knowledge of this company.",
   "number_of_beds": 0,
   "number_of_branches": 0,
   "number_of_specialists": 0,
@@ -146,91 +136,89 @@ Return ONLY valid JSON (no markdown, no explanation):
         }]
       })
     });
-
     const groqData = await groqRes.json();
     const content = groqData.choices?.[0]?.message?.content || '{}';
-    const cleanJson = content.replace(/```json\n?|\n?```/g, '').trim();
-    enriched = JSON.parse(cleanJson);
+    enriched = JSON.parse(content.replace(/```json\n?|\n?```/g, '').trim());
   } catch (e) {
     return res.status(500).json({ error: 'AI failed: ' + e.message });
   }
 
-  // ─── Step 3: Validate LinkedIn (scraping first, AI fallback) ─────────────
+  // ─── Step 3: Validate LinkedIn ────────────────────────────────────────────
   let finalLinkedin = '';
-  
-  // Try scraping result first
-  if (scraped.linkedin_raw) {
-    finalLinkedin = await validateLinkedIn(scraped.linkedin_raw);
-  }
-  
-  // Fallback to AI result if scraping found nothing valid
-  if (!finalLinkedin && enriched.linkedin_url) {
-    finalLinkedin = await validateLinkedIn(enriched.linkedin_url);
-  }
+  if (scraped.linkedin_raw) finalLinkedin = await validateLinkedIn(scraped.linkedin_raw);
+  if (!finalLinkedin && enriched.linkedin_url) finalLinkedin = await validateLinkedIn(enriched.linkedin_url);
 
-  // ─── Step 4: Build Pipedrive payload ──────────────────────────────────────
-  const finalPhone = scraped.phone || '';
-  const finalEmail = scraped.email || '';
-  const finalAddress = enriched.address || '';
-
+  // ─── Step 4: Build payload - ONLY empty fields ────────────────────────────
+  const cf = existing.custom_fields || {};
   const payload = {};
-  const set = (key, val) => {
-    if (val !== undefined && val !== null && val !== '' && val !== 0) payload[key] = val;
+
+  // Helper: set standard field only if empty in Pipedrive
+  const setIfEmpty = (key, val, existingVal) => {
+    if (!isEmpty(val) && isEmpty(existingVal)) payload[key] = val;
   };
 
-  if (enriched.industry) payload.industry = enriched.industry;
-  if (enriched.annual_revenue && enriched.annual_revenue > 1) payload.annual_revenue = enriched.annual_revenue;
-  if (enriched.employee_count > 0) payload.employee_count = enriched.employee_count;
-  if (finalLinkedin) payload.linkedin = finalLinkedin;
-  if (finalPhone) payload.phone = [{ value: finalPhone, primary: true, label: 'work' }];
-  if (finalAddress) payload.address = { value: finalAddress };
+  // Helper: set custom field only if empty
+  const setCustomIfEmpty = (hash, val, existingVal) => {
+    if (!isEmpty(val) && isEmpty(existingVal)) payload[hash] = val;
+  };
 
-  set('0d5afcefbd6ada8781d38fe74873d4b308234a49', enriched.icp);
-  set('5b6f71999f89a4ac00ed32f8bd49bc8480bf459d', enriched.ownership);
-  set('ef79b1ce2c6860be02443dd9728ad62dd4f8b18c', enriched.icp_type);
-  set('18ba6331d70bcfa1eb8cf977c52948c4f2b53df3', enriched.qualify_status);
-  set('113a8ed69dfd080a7d1b84392251a3474d989216', enriched.employees_category);
-  set('95d37d3df1ed511ae90f7fac64eac37a20f4ed83', enriched.org_source);
-  set('e37b931ae0af55393fc51f1b2135c2355b4bea12', enriched.icp_ecosystem);
-  set('bb5ec6a8351b0d3423011da1f8dbfd89d8590b27', enriched.his_identification);
-  set('0139565cc0f6a8dcc0cae8244b672600adf64860', finalLinkedin);
-  set('783923cad610ca666dc3ddac86085a6468c7b809', website || '');
-  set('99c1cffae1ed208819f80c4c3a1b545d461082bb', finalPhone);
-  set('b83bf5f8378a2275b475db4dc64b1101ea48836a', finalEmail);
-  set('b4c2b2ef4b92a130ec7de91f4d17622d5640431e', enriched.company_legal_name);
-  set('115cfff712c6caf184d7c155838a9dace81e8821', enriched.his_software_name);
-  set('4107458f7b06285686f1968fbefa9ea50902cf07', enriched.ceo_name);
-  set('6d64ec2abf8d9a01a64c0cbf2f962281845b1c85', finalAddress);
-  set('aa9502b251dece8bf94fd779579676f711c7c17d', enriched.vat);
-  set('0d6adf6f65d52b61826d207cc40357265b6d6402', enriched.registration_number);
-  if (enriched.number_of_beds > 0) payload['03ed00fa62b2687bb7ec4a2b6c3194cc828d81db'] = enriched.number_of_beds;
-  if (enriched.number_of_branches > 0) payload['bdc6f4f7031fa45a45aa4cd4cd3014f66f9847cf'] = enriched.number_of_branches;
-  if (enriched.number_of_specialists > 0) payload['598c7ea3d04ce28a52985dc15a7f74cb6ff977f3'] = enriched.number_of_specialists;
+  // Standard fields
+  setIfEmpty('industry', enriched.industry, existing.industry);
+  setIfEmpty('annual_revenue', enriched.annual_revenue > 1 ? enriched.annual_revenue : null, existing.annual_revenue);
+  setIfEmpty('employee_count', enriched.employee_count > 0 ? enriched.employee_count : null, existing.employee_count);
+  setIfEmpty('linkedin', finalLinkedin, existing.linkedin);
+  
+  if (!isEmpty(scraped.phone) && isEmpty(existing.phone?.[0]?.value)) {
+    payload.phone = [{ value: scraped.phone, primary: true, label: 'work' }];
+  }
+  if (!isEmpty(enriched.address) && isEmpty(existing.address?.value)) {
+    payload.address = { value: enriched.address };
+  }
 
-  // ─── Step 5: Update Pipedrive ────────────────────────────────────────────
-  const pdRes = await fetch(
-    `https://${PD_DOMAIN}.pipedrive.com/api/v1/organizations/${organizationId}?api_token=${PD_TOKEN}`,
-    { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }
-  );
-  const pdData = await pdRes.json();
-  if (!pdData.success) console.error('Pipedrive error:', JSON.stringify(pdData));
+  // Custom fields
+  setCustomIfEmpty('0d5afcefbd6ada8781d38fe74873d4b308234a49', enriched.icp, cf['0d5afcefbd6ada8781d38fe74873d4b308234a49']);
+  setCustomIfEmpty('5b6f71999f89a4ac00ed32f8bd49bc8480bf459d', enriched.ownership, cf['5b6f71999f89a4ac00ed32f8bd49bc8480bf459d']);
+  setCustomIfEmpty('ef79b1ce2c6860be02443dd9728ad62dd4f8b18c', enriched.icp_type, cf['ef79b1ce2c6860be02443dd9728ad62dd4f8b18c']);
+  setCustomIfEmpty('18ba6331d70bcfa1eb8cf977c52948c4f2b53df3', enriched.qualify_status, cf['18ba6331d70bcfa1eb8cf977c52948c4f2b53df3']);
+  setCustomIfEmpty('113a8ed69dfd080a7d1b84392251a3474d989216', enriched.employees_category, cf['113a8ed69dfd080a7d1b84392251a3474d989216']);
+  setCustomIfEmpty('95d37d3df1ed511ae90f7fac64eac37a20f4ed83', enriched.org_source, cf['95d37d3df1ed511ae90f7fac64eac37a20f4ed83']);
+  setCustomIfEmpty('e37b931ae0af55393fc51f1b2135c2355b4bea12', enriched.icp_ecosystem, cf['e37b931ae0af55393fc51f1b2135c2355b4bea12']);
+  setCustomIfEmpty('bb5ec6a8351b0d3423011da1f8dbfd89d8590b27', enriched.his_identification, cf['bb5ec6a8351b0d3423011da1f8dbfd89d8590b27']);
+  setCustomIfEmpty('0139565cc0f6a8dcc0cae8244b672600adf64860', finalLinkedin, cf['0139565cc0f6a8dcc0cae8244b672600adf64860']);
+  setCustomIfEmpty('783923cad610ca666dc3ddac86085a6468c7b809', siteUrl, cf['783923cad610ca666dc3ddac86085a6468c7b809']);
+  setCustomIfEmpty('99c1cffae1ed208819f80c4c3a1b545d461082bb', scraped.phone, cf['99c1cffae1ed208819f80c4c3a1b545d461082bb']);
+  setCustomIfEmpty('b83bf5f8378a2275b475db4dc64b1101ea48836a', scraped.email, cf['b83bf5f8378a2275b475db4dc64b1101ea48836a']);
+  setCustomIfEmpty('b4c2b2ef4b92a130ec7de91f4d17622d5640431e', enriched.company_legal_name, cf['b4c2b2ef4b92a130ec7de91f4d17622d5640431e']);
+  setCustomIfEmpty('115cfff712c6caf184d7c155838a9dace81e8821', enriched.his_software_name, cf['115cfff712c6caf184d7c155838a9dace81e8821']);
+  setCustomIfEmpty('4107458f7b06285686f1968fbefa9ea50902cf07', enriched.ceo_name, cf['4107458f7b06285686f1968fbefa9ea50902cf07']);
+  setCustomIfEmpty('6d64ec2abf8d9a01a64c0cbf2f962281845b1c85', enriched.address, cf['6d64ec2abf8d9a01a64c0cbf2f962281845b1c85']);
+  setCustomIfEmpty('aa9502b251dece8bf94fd779579676f711c7c17d', enriched.vat, cf['aa9502b251dece8bf94fd779579676f711c7c17d']);
+  setCustomIfEmpty('0d6adf6f65d52b61826d207cc40357265b6d6402', enriched.registration_number, cf['0d6adf6f65d52b61826d207cc40357265b6d6402']);
+  if (enriched.number_of_beds > 0 && isEmpty(cf['03ed00fa62b2687bb7ec4a2b6c3194cc828d81db'])) payload['03ed00fa62b2687bb7ec4a2b6c3194cc828d81db'] = enriched.number_of_beds;
+  if (enriched.number_of_branches > 0 && isEmpty(cf['bdc6f4f7031fa45a45aa4cd4cd3014f66f9847cf'])) payload['bdc6f4f7031fa45a45aa4cd4cd3014f66f9847cf'] = enriched.number_of_branches;
+  if (enriched.number_of_specialists > 0 && isEmpty(cf['598c7ea3d04ce28a52985dc15a7f74cb6ff977f3'])) payload['598c7ea3d04ce28a52985dc15a7f74cb6ff977f3'] = enriched.number_of_specialists;
 
-  // ─── Step 6: Add note only if no AI note exists yet ──────────────────────
+  // ─── Step 5: Update Pipedrive ─────────────────────────────────────────────
+  if (Object.keys(payload).length > 0) {
+    const pdRes = await fetch(
+      `https://${PD_DOMAIN}.pipedrive.com/api/v1/organizations/${organizationId}?api_token=${PD_TOKEN}`,
+      { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }
+    );
+    const pdData = await pdRes.json();
+    if (!pdData.success) console.error('Pipedrive error:', JSON.stringify(pdData));
+  }
+
+  // ─── Step 6: Add note only if no AI note exists ───────────────────────────
   if (enriched.company_overview) {
     const existingNotes = await fetch(
       `https://${PD_DOMAIN}.pipedrive.com/api/v1/notes?api_token=${PD_TOKEN}&org_id=${organizationId}&limit=10`
     ).then(r => r.json());
-    
     const hasAiNote = existingNotes.data?.some(n => n.content?.includes('🤖 AI Enrichment'));
-    
     if (!hasAiNote) {
       await fetch(`https://${PD_DOMAIN}.pipedrive.com/api/v1/notes?api_token=${PD_TOKEN}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          content: `🤖 AI Enrichment\n\n${enriched.company_overview}`,
-          org_id: organizationId
-        })
+        body: JSON.stringify({ content: `🤖 AI Enrichment\n\n${enriched.company_overview}`, org_id: organizationId })
       });
     }
   }
@@ -239,9 +227,6 @@ Return ONLY valid JSON (no markdown, no explanation):
     success: true,
     fields_filled: Object.keys(payload).length,
     linkedin_found: !!finalLinkedin,
-    sources: {
-      web_scraping: !!(scraped.email || scraped.phone || scraped.linkedin_raw),
-      ai: true
-    }
+    sources: { web_scraping: !!(scraped.email || scraped.phone || scraped.linkedin_raw), ai: true }
   });
 }

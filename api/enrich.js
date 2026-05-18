@@ -13,6 +13,7 @@ export default async function handler(req, res) {
   const GROQ_KEY = process.env.GROQ_API_KEY;
   const PD_TOKEN = process.env.PIPEDRIVE_API_TOKEN;
   const PD_DOMAIN = process.env.PIPEDRIVE_DOMAIN;
+  const TAVILY_KEY = process.env.TAVILY_API_KEY;
 
   // ─── Step 0: Get existing org data from Pipedrive ─────────────────────────
   let existing = {};
@@ -23,74 +24,50 @@ export default async function handler(req, res) {
     const existingData = await existingRes.json();
     if (existingData.success) {
       existing = existingData.data || {};
-      if (!name) name = existing.name || "";
-      if (!website) website = existing.website || existing["783923cad610ca666dc3ddac86085a6468c7b809"] || "";
+      if (!name) name = existing.name || '';
+      if (!website) website = existing.website || existing['783923cad610ca666dc3ddac86085a6468c7b809'] || '';
     }
   } catch (e) {
     console.error('Failed to get existing org:', e.message);
   }
 
-  // Helper: check if a field is already filled
   const isEmpty = (val) => val === null || val === undefined || val === '' || val === 0 || val === false;
 
-  // ─── LinkedIn validator ───────────────────────────────────────────────────
-  const INVALID_SLUGS = ['unavailable','login','authwall','404','null','undefined','company'];
-  
-  async function validateLinkedIn(url) {
-    if (!url) return '';
-    const clean = url.trim().split('?')[0].replace(/\/$/, '');
-    if (!clean.includes('linkedin.com/company/')) return '';
-    const slug = clean.split('linkedin.com/company/')[1]?.split('/')[0];
-    if (!slug || INVALID_SLUGS.includes(slug.toLowerCase())) return '';
-    const finalUrl = `https://www.linkedin.com/company/${slug}/`;
+  // ─── Step 1: Tavily web search ────────────────────────────────────────────
+  let searchContext = '';
+  if (TAVILY_KEY && name) {
     try {
-      const r = await fetch(finalUrl, {
-        method: 'HEAD',
-        headers: { 'User-Agent': 'Mozilla/5.0' },
-        signal: AbortSignal.timeout(5000),
-        redirect: 'follow'
+      const query = website 
+        ? `${name} ${website} company healthcare services`
+        : `${name} company healthcare`;
+
+      const tavilyRes = await fetch('https://api.tavily.com/search', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          api_key: TAVILY_KEY,
+          query: query,
+          search_depth: 'basic',
+          max_results: 5,
+          include_answer: true,
+          include_raw_content: false
+        })
       });
-      if (r.status === 404 || r.url?.includes('unavailable')) return '';
-      return finalUrl;
-    } catch {
-      return finalUrl;
-    }
-  }
 
-  // ─── Step 1: Scrape website ───────────────────────────────────────────────
-  let scraped = { email: '', linkedin_raw: '', phone: '', html_text: '' };
-  const siteUrl = website || existing.website || '';
-
-  if (siteUrl) {
-    try {
-      const r = await fetch(siteUrl, {
-        headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' },
-        signal: AbortSignal.timeout(10000)
-      });
-      const html = await r.text();
-      const text = html.replace(/<script[\s\S]*?<\/script>/gi, '')
-                       .replace(/<style[\s\S]*?<\/style>/gi, '')
-                       .replace(/<[^>]+>/g, ' ')
-                       .replace(/\s+/g, ' ')
-                       .substring(0, 4000);
-
-      const genericDomains = ['gmail','yahoo','hotmail','outlook','example','sentry','wix','wp','noreply','cloudflare','w3.org','schema'];
-      const emails = [...new Set((html.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g) || [])
-        .filter(e => !genericDomains.some(d => e.toLowerCase().includes(d))))];
-
-      const linkedinFromHref = html.match(/href=["'][^"']*linkedin\.com\/company\/([a-zA-Z0-9_%-]+)/i);
-      const linkedinFromText = html.match(/linkedin\.com\/company\/([a-zA-Z0-9_%-]+)/i);
-      const linkedinSlug = linkedinFromHref?.[1] || linkedinFromText?.[1] || '';
-      const linkedinRaw = linkedinSlug ? `https://www.linkedin.com/company/${linkedinSlug}/` : '';
-
-      const phoneMatches = html.match(/(\+[\d\s\-().]{8,18}[\d])/g) || [];
-      const cleanPhone = phoneMatches
-        .map(p => p.trim())
-        .filter(p => { const d = p.replace(/\D/g, ''); return d.length >= 8 && d.length <= 15; })[0] || '';
-
-      scraped = { email: emails[0] || '', linkedin_raw: linkedinRaw, phone: cleanPhone, html_text: text };
+      const tavilyData = await tavilyRes.json();
+      
+      if (tavilyData.answer) {
+        searchContext += `Web search answer: ${tavilyData.answer}\n\n`;
+      }
+      
+      if (tavilyData.results?.length > 0) {
+        searchContext += 'Search results:\n';
+        tavilyData.results.slice(0, 3).forEach(r => {
+          searchContext += `- ${r.title}: ${r.content?.substring(0, 300)}\n`;
+        });
+      }
     } catch (e) {
-      console.error('Scraping error:', e.message);
+      console.error('Tavily error:', e.message);
     }
   }
 
@@ -105,19 +82,22 @@ export default async function handler(req, res) {
         max_tokens: 1200,
         messages: [{
           role: 'user',
-          content: `You are a B2B healthcare CRM data specialist. Analyze this company carefully.
+          content: `You are a B2B healthcare CRM data specialist. Analyze this company and fill fields you can determine with confidence.
 
 Company name: ${name}
-Website: ${siteUrl || 'unknown'}
-Website content: ${scraped.html_text || 'not available'}
-Found email: ${scraped.email || 'none'}
-Found phone: ${scraped.phone || 'none'}
+Website: ${website || 'unknown'}
+Address: ${existing.address?.value || 'unknown'}
+${searchContext ? `\nWeb search context:\n${searchContext}` : ''}
+
+Use the company name, website domain, address, and web search context to determine fields.
+From name/domain alone you CAN determine: industry, icp_type, ownership (if obvious from name like "Public Hospital").
+Only leave fields empty (0 or "") if you truly cannot determine them even from context.
 
 Return ONLY valid JSON (no markdown, no explanation):
 {
   "industry": <11=Hospitals & Health Care, 14=Professional Services, 17=Technology, 12=Manufacturing, 16=Retail, 18=Transportation, or 0 if unknown>,
   "annual_revenue": <2=1-10M USD, 3=10-100M USD, 4=100-1000M USD, 5=1-10B USD, or 0 if unknown>,
-  "employee_count": <exact number if clearly stated in website content, or 0>,
+  "employee_count": <exact number if found in search results, or 0>,
   "employees_category": <49=1-10, 50=11-50, 51=51-200, 52=201-500, 53=501-1000, 54=1001-5000, 55=5001-10000, 56=10001+, or 0 if unknown>,
   "icp": <64=Yes, 65=No, 371=No-too small, 66=? if unsure>,
   "ownership": <1014=Private, 1015=Public, 1016=Unknown>,
@@ -128,19 +108,22 @@ Return ONLY valid JSON (no markdown, no explanation):
   "his_identification": <850=Yes, 851=No>,
   "company_legal_name": "official legal name with legal form or empty string",
   "his_software_name": "HIS/RIS/LIS/PACS software name or empty string",
-  "ceo_name": "CEO full name only if found in website content, or empty string",
-  "address": "full street address only if found in website content, or empty string",
-  "vat": "VAT number only if found in website content, or empty string",
-  "registration_number": "registration number only if found in website content, or empty string",
-  "linkedin_url": "Find the EXACT official LinkedIn company URL from your training knowledge. Format: https://www.linkedin.com/company/SLUG/ — return empty string ONLY if you have zero knowledge of this company.",
+  "ceo_name": "CEO full name only if found in search results, or empty string",
+  "address": "full street address if found in search results, or empty string",
+  "vat": "VAT number if found in search results, or empty string",
+  "registration_number": "registration number if found in search results, or empty string",
+  "linkedin_url": "Find the EXACT official LinkedIn company URL from your training knowledge or search results. Format: https://www.linkedin.com/company/SLUG/ or empty string",
+  "phone": "phone number if found in search results, or empty string",
+  "email": "company email if found in search results, or empty string",
   "number_of_beds": 0,
   "number_of_branches": 0,
   "number_of_specialists": 0,
-  "company_overview": "2-3 sentence description of what this company does, who they serve, and their key services"
+  "company_overview": "2-3 sentence description based on search results and company name"
 }`
         }]
       })
     });
+
     const groqData = await groqRes.json();
     const content = groqData.choices?.[0]?.message?.content || '{}';
     enriched = JSON.parse(content.replace(/```json\n?|\n?```/g, '').trim());
@@ -149,38 +132,43 @@ Return ONLY valid JSON (no markdown, no explanation):
   }
 
   // ─── Step 3: Validate LinkedIn ────────────────────────────────────────────
+  const INVALID_SLUGS = ['unavailable','login','authwall','404','null','undefined','company'];
+  
+  async function validateLinkedIn(url) {
+    if (!url) return '';
+    const clean = url.trim().split('?')[0].replace(/\/$/, '');
+    if (!clean.includes('linkedin.com/company/')) return '';
+    const slug = clean.split('linkedin.com/company/')[1]?.split('/')[0];
+    if (!slug || INVALID_SLUGS.includes(slug.toLowerCase())) return '';
+    const finalUrl = `https://www.linkedin.com/company/${slug}/`;
+    try {
+      const r = await fetch(finalUrl, { method: 'HEAD', headers: { 'User-Agent': 'Mozilla/5.0' }, signal: AbortSignal.timeout(5000), redirect: 'follow' });
+      if (r.status === 404 || r.url?.includes('unavailable')) return '';
+      return finalUrl;
+    } catch { return finalUrl; }
+  }
+
   let finalLinkedin = '';
-  if (scraped.linkedin_raw) finalLinkedin = await validateLinkedIn(scraped.linkedin_raw);
-  if (!finalLinkedin && enriched.linkedin_url) finalLinkedin = await validateLinkedIn(enriched.linkedin_url);
+  if (enriched.linkedin_url) finalLinkedin = await validateLinkedIn(enriched.linkedin_url);
 
   // ─── Step 4: Build payload - ONLY empty fields ────────────────────────────
   const cf = existing.custom_fields || {};
   const payload = {};
+  const setIfEmpty = (key, val, existingVal) => { if (!isEmpty(val) && isEmpty(existingVal)) payload[key] = val; };
+  const setCustomIfEmpty = (hash, val, existingVal) => { if (!isEmpty(val) && isEmpty(existingVal)) payload[hash] = val; };
 
-  // Helper: set standard field only if empty in Pipedrive
-  const setIfEmpty = (key, val, existingVal) => {
-    if (!isEmpty(val) && isEmpty(existingVal)) payload[key] = val;
-  };
-
-  // Helper: set custom field only if empty
-  const setCustomIfEmpty = (hash, val, existingVal) => {
-    if (!isEmpty(val) && isEmpty(existingVal)) payload[hash] = val;
-  };
-
-  // Standard fields
   setIfEmpty('industry', enriched.industry, existing.industry);
   setIfEmpty('annual_revenue', enriched.annual_revenue > 1 ? enriched.annual_revenue : null, existing.annual_revenue);
   setIfEmpty('employee_count', enriched.employee_count > 0 ? enriched.employee_count : null, existing.employee_count);
   setIfEmpty('linkedin', finalLinkedin, existing.linkedin);
   
-  if (!isEmpty(scraped.phone) && isEmpty(existing.phone?.[0]?.value)) {
-    payload.phone = [{ value: scraped.phone, primary: true, label: 'work' }];
+  if (!isEmpty(enriched.phone) && isEmpty(existing.phone?.[0]?.value)) {
+    payload.phone = [{ value: enriched.phone, primary: true, label: 'work' }];
   }
   if (!isEmpty(enriched.address) && isEmpty(existing.address?.value)) {
     payload.address = { value: enriched.address };
   }
 
-  // Custom fields
   setCustomIfEmpty('0d5afcefbd6ada8781d38fe74873d4b308234a49', enriched.icp, cf['0d5afcefbd6ada8781d38fe74873d4b308234a49']);
   setCustomIfEmpty('5b6f71999f89a4ac00ed32f8bd49bc8480bf459d', enriched.ownership, cf['5b6f71999f89a4ac00ed32f8bd49bc8480bf459d']);
   setCustomIfEmpty('ef79b1ce2c6860be02443dd9728ad62dd4f8b18c', enriched.icp_type, cf['ef79b1ce2c6860be02443dd9728ad62dd4f8b18c']);
@@ -190,9 +178,9 @@ Return ONLY valid JSON (no markdown, no explanation):
   setCustomIfEmpty('e37b931ae0af55393fc51f1b2135c2355b4bea12', enriched.icp_ecosystem, cf['e37b931ae0af55393fc51f1b2135c2355b4bea12']);
   setCustomIfEmpty('bb5ec6a8351b0d3423011da1f8dbfd89d8590b27', enriched.his_identification, cf['bb5ec6a8351b0d3423011da1f8dbfd89d8590b27']);
   setCustomIfEmpty('0139565cc0f6a8dcc0cae8244b672600adf64860', finalLinkedin, cf['0139565cc0f6a8dcc0cae8244b672600adf64860']);
-  setCustomIfEmpty('783923cad610ca666dc3ddac86085a6468c7b809', siteUrl, cf['783923cad610ca666dc3ddac86085a6468c7b809']);
-  setCustomIfEmpty('99c1cffae1ed208819f80c4c3a1b545d461082bb', scraped.phone, cf['99c1cffae1ed208819f80c4c3a1b545d461082bb']);
-  setCustomIfEmpty('b83bf5f8378a2275b475db4dc64b1101ea48836a', scraped.email, cf['b83bf5f8378a2275b475db4dc64b1101ea48836a']);
+  setCustomIfEmpty('783923cad610ca666dc3ddac86085a6468c7b809', website || '', cf['783923cad610ca666dc3ddac86085a6468c7b809']);
+  setCustomIfEmpty('99c1cffae1ed208819f80c4c3a1b545d461082bb', enriched.phone, cf['99c1cffae1ed208819f80c4c3a1b545d461082bb']);
+  setCustomIfEmpty('b83bf5f8378a2275b475db4dc64b1101ea48836a', enriched.email, cf['b83bf5f8378a2275b475db4dc64b1101ea48836a']);
   setCustomIfEmpty('b4c2b2ef4b92a130ec7de91f4d17622d5640431e', enriched.company_legal_name, cf['b4c2b2ef4b92a130ec7de91f4d17622d5640431e']);
   setCustomIfEmpty('115cfff712c6caf184d7c155838a9dace81e8821', enriched.his_software_name, cf['115cfff712c6caf184d7c155838a9dace81e8821']);
   setCustomIfEmpty('4107458f7b06285686f1968fbefa9ea50902cf07', enriched.ceo_name, cf['4107458f7b06285686f1968fbefa9ea50902cf07']);
@@ -231,7 +219,7 @@ Return ONLY valid JSON (no markdown, no explanation):
   return res.status(200).json({
     success: true,
     fields_filled: Object.keys(payload).length,
-    linkedin_found: !!finalLinkedin,
-    sources: { web_scraping: !!(scraped.email || scraped.phone || scraped.linkedin_raw), ai: true }
+    tavily_used: !!searchContext,
+    linkedin_found: !!finalLinkedin
   });
 }

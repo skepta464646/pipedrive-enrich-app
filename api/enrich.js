@@ -95,10 +95,9 @@ if (liResult) {
         foundLinkedinUrl = liResult.url;
         searchContext += `\nLinkedIn validated: ${liResult.url}`;
       }
-    } catch {
-      // If extract fails, fall back to title match only
-      foundLinkedinUrl = liResult.url;
-      searchContext += `\nLinkedIn found: ${liResult.url}`;
+} catch {
+      // Extract failed - skip LinkedIn, better empty than wrong
+      console.log('LinkedIn extract failed, skipping');
     }
   }
 }

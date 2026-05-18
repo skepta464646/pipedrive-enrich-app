@@ -91,7 +91,7 @@ if (liResult) {
       const cleanWebsite = website?.replace(/https?:\/\/(www\.)?/, '').replace(/\/$/, '') || '';
       const websiteMatch = cleanWebsite && liContent.toLowerCase().includes(cleanWebsite.toLowerCase());
       const nameMatch = nameWords.some(w => liContent.toLowerCase().includes(w));
-      if (websiteMatch || nameMatch) {
+            if (websiteMatch) {
         foundLinkedinUrl = liResult.url;
         searchContext += `\nLinkedIn validated: ${liResult.url}`;
       }

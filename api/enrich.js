@@ -75,14 +75,33 @@ export default async function handler(req, res) {
       }
 // Extract LinkedIn URL from results - validate it matches company name
       const liResult = linkedinData.results?.find(r => r.url?.includes('linkedin.com/company/'));
-      if (liResult) {
-        const nameWords = name.toLowerCase().split(/\s+/).filter(w => w.length > 3);
-        const titleMatches = nameWords.some(w => liResult.title?.toLowerCase().includes(w));
-        if (titleMatches) {
-          foundLinkedinUrl = liResult.url;
-          searchContext += `\nLinkedIn found: ${liResult.url}`;
-        }
+if (liResult) {
+  const nameWords = name.toLowerCase().split(/\s+/).filter(w => w.length > 3);
+  const titleMatches = nameWords.some(w => liResult.title?.toLowerCase().includes(w));
+  if (titleMatches) {
+    // Extra validation: check LinkedIn page content matches our website
+    try {
+      const extractRes = await fetch('https://api.tavily.com/extract', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ api_key: TAVILY_KEY, urls: [liResult.url] })
+      });
+      const extractData = await extractRes.json();
+      const liContent = extractData.results?.[0]?.raw_content || '';
+      const cleanWebsite = website?.replace(/https?:\/\/(www\.)?/, '').replace(/\/$/, '') || '';
+      const websiteMatch = cleanWebsite && liContent.toLowerCase().includes(cleanWebsite.toLowerCase());
+      const nameMatch = nameWords.some(w => liContent.toLowerCase().includes(w));
+      if (websiteMatch || nameMatch) {
+        foundLinkedinUrl = liResult.url;
+        searchContext += `\nLinkedIn validated: ${liResult.url}`;
       }
+    } catch {
+      // If extract fails, fall back to title match only
+      foundLinkedinUrl = liResult.url;
+      searchContext += `\nLinkedIn found: ${liResult.url}`;
+    }
+  }
+}
     } catch (e) { console.error('Tavily error:', e.message); }
   }
   // ─── Step 2: AI enrichment ────────────────────────────────────────────────
@@ -180,7 +199,7 @@ Return ONLY valid JSON (no markdown):
     } catch { return finalUrl; }
   }
 
-  const liCandidate = enriched.linkedin_url || foundLinkedinUrl || '';
+  const liCandidate = foundLinkedinUrl || '';
   const finalLinkedin = await validateLinkedIn(liCandidate);
 
   // ─── Step 5: Build payload — only empty fields ────────────────────────────

@@ -53,7 +53,7 @@ export default async function handler(req, res) {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             api_key: TAVILY_KEY,
-            query: `"${name}" linkedin company`,
+            query: `"${name}" site:linkedin.com/company`,
             search_depth: 'basic',
             max_results: 3,
             include_answer: false
@@ -73,17 +73,18 @@ export default async function handler(req, res) {
           searchContext += `- ${r.title}: ${r.content?.substring(0, 300)}\n`;
         });
       }
-
-      // Extract LinkedIn URL from results
+// Extract LinkedIn URL from results - validate it matches company name
       const liResult = linkedinData.results?.find(r => r.url?.includes('linkedin.com/company/'));
       if (liResult) {
-        foundLinkedinUrl = liResult.url;
-        searchContext += `\nLinkedIn found: ${liResult.url}`;
+        const nameWords = name.toLowerCase().split(/\s+/).filter(w => w.length > 3);
+        const titleMatches = nameWords.some(w => liResult.title?.toLowerCase().includes(w));
+        if (titleMatches) {
+          foundLinkedinUrl = liResult.url;
+          searchContext += `\nLinkedIn found: ${liResult.url}`;
+        }
       }
-
     } catch (e) { console.error('Tavily error:', e.message); }
   }
-
   // ─── Step 2: AI enrichment ────────────────────────────────────────────────
   let enriched = {};
   try {

@@ -15,60 +15,73 @@ export default async function handler(req, res) {
   const PD_DOMAIN = process.env.PIPEDRIVE_DOMAIN;
   const TAVILY_KEY = process.env.TAVILY_API_KEY;
 
-  // ─── Step 0: Get existing org data from Pipedrive ─────────────────────────
+  // ─── Step 0: Get existing org from Pipedrive ──────────────────────────────
   let existing = {};
   try {
-    const existingRes = await fetch(
-      `https://${PD_DOMAIN}.pipedrive.com/api/v1/organizations/${organizationId}?api_token=${PD_TOKEN}`
-    );
-    const existingData = await existingRes.json();
-    if (existingData.success) {
-      existing = existingData.data || {};
+    const r = await fetch(`https://${PD_DOMAIN}.pipedrive.com/api/v1/organizations/${organizationId}?api_token=${PD_TOKEN}`);
+    const d = await r.json();
+    if (d.success) {
+      existing = d.data || {};
       if (!name) name = existing.name || '';
       if (!website) website = existing.website || existing['783923cad610ca666dc3ddac86085a6468c7b809'] || '';
     }
-  } catch (e) {
-    console.error('Failed to get existing org:', e.message);
-  }
+  } catch (e) { console.error('PD fetch error:', e.message); }
 
   const isEmpty = (val) => val === null || val === undefined || val === '' || val === 0 || val === false;
 
-  // ─── Step 1: Tavily web search ────────────────────────────────────────────
+  // ─── Step 1: Tavily search (general + LinkedIn) ───────────────────────────
   let searchContext = '';
+  let foundLinkedinUrl = '';
+
   if (TAVILY_KEY && name) {
     try {
-      const query = website 
-        ? `${name} ${website} company healthcare services`
-        : `${name} company healthcare`;
-
-      const tavilyRes = await fetch('https://api.tavily.com/search', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          api_key: TAVILY_KEY,
-          query: query,
-          search_depth: 'basic',
-          max_results: 5,
-          include_answer: true,
-          include_raw_content: false
+      // General company search
+      const [generalRes, linkedinRes] = await Promise.all([
+        fetch('https://api.tavily.com/search', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            api_key: TAVILY_KEY,
+            query: `${name} ${website || ''} company healthcare services contact`,
+            search_depth: 'basic',
+            max_results: 5,
+            include_answer: true
+          })
+        }),
+        fetch('https://api.tavily.com/search', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            api_key: TAVILY_KEY,
+            query: `"${name}" linkedin company`,
+            search_depth: 'basic',
+            max_results: 3,
+            include_answer: false
+          })
         })
-      });
+      ]);
 
-      const tavilyData = await tavilyRes.json();
-      
-      if (tavilyData.answer) {
-        searchContext += `Web search answer: ${tavilyData.answer}\n\n`;
-      }
-      
-      if (tavilyData.results?.length > 0) {
-        searchContext += 'Search results:\n';
-        tavilyData.results.slice(0, 3).forEach(r => {
+      const [generalData, linkedinData] = await Promise.all([
+        generalRes.json(),
+        linkedinRes.json()
+      ]);
+
+      if (generalData.answer) searchContext += `Summary: ${generalData.answer}\n\n`;
+      if (generalData.results?.length > 0) {
+        searchContext += 'Web results:\n';
+        generalData.results.slice(0, 4).forEach(r => {
           searchContext += `- ${r.title}: ${r.content?.substring(0, 300)}\n`;
         });
       }
-    } catch (e) {
-      console.error('Tavily error:', e.message);
-    }
+
+      // Extract LinkedIn URL from results
+      const liResult = linkedinData.results?.find(r => r.url?.includes('linkedin.com/company/'));
+      if (liResult) {
+        foundLinkedinUrl = liResult.url;
+        searchContext += `\nLinkedIn found: ${liResult.url}`;
+      }
+
+    } catch (e) { console.error('Tavily error:', e.message); }
   }
 
   // ─── Step 2: AI enrichment ────────────────────────────────────────────────
@@ -82,43 +95,46 @@ export default async function handler(req, res) {
         max_tokens: 1200,
         messages: [{
           role: 'user',
-          content: `You are a B2B healthcare CRM data specialist. Analyze this company and fill fields you can determine with confidence.
+          content: `You are a B2B healthcare CRM data specialist. Fill ALL fields you can determine from the information below.
 
 Company name: ${name}
 Website: ${website || 'unknown'}
 Address: ${existing.address?.value || 'unknown'}
-${searchContext ? `\nWeb search context:\n${searchContext}` : ''}
+${searchContext ? `\nResearch context:\n${searchContext}` : ''}
 
-Use the company name, website domain, address, and web search context to determine fields.
-From name/domain alone you CAN determine: industry, icp_type, ownership (if obvious from name like "Public Hospital").
-Only leave fields empty (0 or "") if you truly cannot determine them even from context.
+Rules:
+- From company name alone you CAN determine: industry, icp_type, ownership
+- From search results extract: phone, email, address, company_legal_name, CEO name, VAT
+- For LinkedIn: validate the found URL matches this company
+- Leave numeric fields as 0 only if truly unknown
+- Most private clinics = ownership 1014 (Private)
 
-Return ONLY valid JSON (no markdown, no explanation):
+Return ONLY valid JSON (no markdown):
 {
-  "industry": <11=Hospitals & Health Care, 14=Professional Services, 17=Technology, 12=Manufacturing, 16=Retail, 18=Transportation, or 0 if unknown>,
-  "annual_revenue": <2=1-10M USD, 3=10-100M USD, 4=100-1000M USD, 5=1-10B USD, or 0 if unknown>,
-  "employee_count": <exact number if found in search results, or 0>,
-  "employees_category": <49=1-10, 50=11-50, 51=51-200, 52=201-500, 53=501-1000, 54=1001-5000, 55=5001-10000, 56=10001+, or 0 if unknown>,
-  "icp": <64=Yes, 65=No, 371=No-too small, 66=? if unsure>,
+  "industry": <11=Hospitals & Health Care, 14=Professional Services, 17=Technology, or 0>,
+  "annual_revenue": <2=1-10M, 3=10-100M, 4=100-1000M, 5=1-10B, or 0>,
+  "employee_count": <exact number from search or 0>,
+  "employees_category": <49=1-10, 50=11-50, 51=51-200, 52=201-500, 53=501-1000, 54=1001-5000, 55=5001-10000, 56=10001+, or 0>,
+  "icp": <64=Yes, 65=No, 371=No-too small, 66=?>,
   "ownership": <1014=Private, 1015=Public, 1016=Unknown>,
-  "icp_type": <1017=Hospital, 935=Clinic/Polyclinic, 1018=Specialist Practice, 520=Dental Clinic, 932=Diagnostic Center & Laboratory, 939=HIS Software Provider, 937=Nursing Home/Long-term Care, 936=Dialysis Clinic, 1019=Physiotherapy Clinic, 1020=Aesthetic & Plastic Surgery, 1021=Ophthalmology Clinic, 1022=Radiology Center, 1023=Rehabilitation Center, 1024=Mental Health Clinic, 934=Maternity and IVF Clinic, 931=Home Care, 1028=Unknown>,
-  "qualify_status": <62=Qualified with contact, 63=Qualified with contact+email, 61=Qualified no contact, 57=To qualify>,
+  "icp_type": <1017=Hospital, 935=Clinic/Polyclinic, 1018=Specialist Practice, 520=Dental, 932=Diagnostic Center, 939=HIS Software Provider, 937=Nursing Home, 936=Dialysis, 1019=Physiotherapy, 1020=Aesthetic Surgery, 1021=Ophthalmology, 1022=Radiology, 1023=Rehabilitation, 1024=Mental Health, 934=Maternity/IVF Clinic, 931=Home Care, 1028=Unknown>,
+  "qualify_status": <62=Qualified with contact, 63=Qualified+email, 61=Qualified no contact, 57=To qualify>,
   "org_source": 546,
   "icp_ecosystem": <854=Healthcare ecosystem, 855=Healthcare software vendors, or 0>,
   "his_identification": <850=Yes, 851=No>,
-  "company_legal_name": "official legal name with legal form or empty string",
-  "his_software_name": "HIS/RIS/LIS/PACS software name or empty string",
-  "ceo_name": "CEO full name only if found in search results, or empty string",
-  "address": "full street address if found in search results, or empty string",
-  "vat": "VAT number if found in search results, or empty string",
-  "registration_number": "registration number if found in search results, or empty string",
-  "linkedin_url": "Find the EXACT official LinkedIn company URL from your training knowledge or search results. Format: https://www.linkedin.com/company/SLUG/ or empty string",
-  "phone": "phone number if found in search results, or empty string",
-  "email": "company email if found in search results, or empty string",
+  "company_legal_name": "legal name or empty string",
+  "his_software_name": "HIS/RIS/LIS/PACS software or empty string",
+  "ceo_name": "CEO full name from search or empty string",
+  "address": "full address from search or empty string",
+  "vat": "VAT number from search or empty string",
+  "registration_number": "reg number from search or empty string",
+  "linkedin_url": "confirm or find LinkedIn URL - validate it matches this company, or empty string",
+  "phone": "phone from search or empty string",
+  "email": "company email from search or empty string",
   "number_of_beds": 0,
   "number_of_branches": 0,
   "number_of_specialists": 0,
-  "company_overview": "2-3 sentence description based on search results and company name"
+  "company_overview": "2-3 sentence description based on research"
 }`
         }]
       })
@@ -131,7 +147,22 @@ Return ONLY valid JSON (no markdown, no explanation):
     return res.status(500).json({ error: 'AI failed: ' + e.message });
   }
 
-  // ─── Step 3: Validate LinkedIn ────────────────────────────────────────────
+  // ─── Step 3: Auto-corrections ─────────────────────────────────────────────
+  // If healthcare ICP type → ICP should be Yes
+  const healthcareTypes = [1017,935,1018,520,932,937,936,1019,1020,1021,1022,1023,1024,934,931];
+  if (healthcareTypes.includes(enriched.icp_type) && (enriched.icp === 66 || enriched.icp === 0)) {
+    enriched.icp = 64;
+  }
+  // HIS Software Provider → icp_ecosystem = Healthcare software vendors
+  if (enriched.icp_type === 939 && !enriched.icp_ecosystem) {
+    enriched.icp_ecosystem = 855;
+  }
+  // Other healthcare → icp_ecosystem = Healthcare ecosystem
+  if (healthcareTypes.includes(enriched.icp_type) && !enriched.icp_ecosystem) {
+    enriched.icp_ecosystem = 854;
+  }
+
+  // ─── Step 4: Validate LinkedIn ────────────────────────────────────────────
   const INVALID_SLUGS = ['unavailable','login','authwall','404','null','undefined','company'];
   
   async function validateLinkedIn(url) {
@@ -148,50 +179,45 @@ Return ONLY valid JSON (no markdown, no explanation):
     } catch { return finalUrl; }
   }
 
-  let finalLinkedin = '';
-  if (enriched.linkedin_url) finalLinkedin = await validateLinkedIn(enriched.linkedin_url);
+  const liCandidate = enriched.linkedin_url || foundLinkedinUrl || '';
+  const finalLinkedin = await validateLinkedIn(liCandidate);
 
-  // ─── Step 4: Build payload - ONLY empty fields ────────────────────────────
+  // ─── Step 5: Build payload — only empty fields ────────────────────────────
   const cf = existing.custom_fields || {};
   const payload = {};
-  const setIfEmpty = (key, val, existingVal) => { if (!isEmpty(val) && isEmpty(existingVal)) payload[key] = val; };
-  const setCustomIfEmpty = (hash, val, existingVal) => { if (!isEmpty(val) && isEmpty(existingVal)) payload[hash] = val; };
+  const setIfEmpty = (key, val, ev) => { if (!isEmpty(val) && isEmpty(ev)) payload[key] = val; };
+  const setCfIfEmpty = (hash, val, ev) => { if (!isEmpty(val) && isEmpty(ev)) payload[hash] = val; };
 
   setIfEmpty('industry', enriched.industry, existing.industry);
   setIfEmpty('annual_revenue', enriched.annual_revenue > 1 ? enriched.annual_revenue : null, existing.annual_revenue);
   setIfEmpty('employee_count', enriched.employee_count > 0 ? enriched.employee_count : null, existing.employee_count);
   setIfEmpty('linkedin', finalLinkedin, existing.linkedin);
-  
-  if (!isEmpty(enriched.phone) && isEmpty(existing.phone?.[0]?.value)) {
-    payload.phone = [{ value: enriched.phone, primary: true, label: 'work' }];
-  }
-  if (!isEmpty(enriched.address) && isEmpty(existing.address?.value)) {
-    payload.address = { value: enriched.address };
-  }
+  if (!isEmpty(enriched.phone) && isEmpty(existing.phone?.[0]?.value)) payload.phone = [{ value: enriched.phone, primary: true, label: 'work' }];
+  if (!isEmpty(enriched.address) && isEmpty(existing.address?.value)) payload.address = { value: enriched.address };
 
-  setCustomIfEmpty('0d5afcefbd6ada8781d38fe74873d4b308234a49', enriched.icp, cf['0d5afcefbd6ada8781d38fe74873d4b308234a49']);
-  setCustomIfEmpty('5b6f71999f89a4ac00ed32f8bd49bc8480bf459d', enriched.ownership, cf['5b6f71999f89a4ac00ed32f8bd49bc8480bf459d']);
-  setCustomIfEmpty('ef79b1ce2c6860be02443dd9728ad62dd4f8b18c', enriched.icp_type, cf['ef79b1ce2c6860be02443dd9728ad62dd4f8b18c']);
-  setCustomIfEmpty('18ba6331d70bcfa1eb8cf977c52948c4f2b53df3', enriched.qualify_status, cf['18ba6331d70bcfa1eb8cf977c52948c4f2b53df3']);
-  setCustomIfEmpty('113a8ed69dfd080a7d1b84392251a3474d989216', enriched.employees_category, cf['113a8ed69dfd080a7d1b84392251a3474d989216']);
-  setCustomIfEmpty('95d37d3df1ed511ae90f7fac64eac37a20f4ed83', enriched.org_source, cf['95d37d3df1ed511ae90f7fac64eac37a20f4ed83']);
-  setCustomIfEmpty('e37b931ae0af55393fc51f1b2135c2355b4bea12', enriched.icp_ecosystem, cf['e37b931ae0af55393fc51f1b2135c2355b4bea12']);
-  setCustomIfEmpty('bb5ec6a8351b0d3423011da1f8dbfd89d8590b27', enriched.his_identification, cf['bb5ec6a8351b0d3423011da1f8dbfd89d8590b27']);
-  setCustomIfEmpty('0139565cc0f6a8dcc0cae8244b672600adf64860', finalLinkedin, cf['0139565cc0f6a8dcc0cae8244b672600adf64860']);
-  setCustomIfEmpty('783923cad610ca666dc3ddac86085a6468c7b809', website || '', cf['783923cad610ca666dc3ddac86085a6468c7b809']);
-  setCustomIfEmpty('99c1cffae1ed208819f80c4c3a1b545d461082bb', enriched.phone, cf['99c1cffae1ed208819f80c4c3a1b545d461082bb']);
-  setCustomIfEmpty('b83bf5f8378a2275b475db4dc64b1101ea48836a', enriched.email, cf['b83bf5f8378a2275b475db4dc64b1101ea48836a']);
-  setCustomIfEmpty('b4c2b2ef4b92a130ec7de91f4d17622d5640431e', enriched.company_legal_name, cf['b4c2b2ef4b92a130ec7de91f4d17622d5640431e']);
-  setCustomIfEmpty('115cfff712c6caf184d7c155838a9dace81e8821', enriched.his_software_name, cf['115cfff712c6caf184d7c155838a9dace81e8821']);
-  setCustomIfEmpty('4107458f7b06285686f1968fbefa9ea50902cf07', enriched.ceo_name, cf['4107458f7b06285686f1968fbefa9ea50902cf07']);
-  setCustomIfEmpty('6d64ec2abf8d9a01a64c0cbf2f962281845b1c85', enriched.address, cf['6d64ec2abf8d9a01a64c0cbf2f962281845b1c85']);
-  setCustomIfEmpty('aa9502b251dece8bf94fd779579676f711c7c17d', enriched.vat, cf['aa9502b251dece8bf94fd779579676f711c7c17d']);
-  setCustomIfEmpty('0d6adf6f65d52b61826d207cc40357265b6d6402', enriched.registration_number, cf['0d6adf6f65d52b61826d207cc40357265b6d6402']);
+  setCfIfEmpty('0d5afcefbd6ada8781d38fe74873d4b308234a49', enriched.icp,                cf['0d5afcefbd6ada8781d38fe74873d4b308234a49']);
+  setCfIfEmpty('5b6f71999f89a4ac00ed32f8bd49bc8480bf459d', enriched.ownership,           cf['5b6f71999f89a4ac00ed32f8bd49bc8480bf459d']);
+  setCfIfEmpty('ef79b1ce2c6860be02443dd9728ad62dd4f8b18c', enriched.icp_type,            cf['ef79b1ce2c6860be02443dd9728ad62dd4f8b18c']);
+  setCfIfEmpty('18ba6331d70bcfa1eb8cf977c52948c4f2b53df3', enriched.qualify_status,      cf['18ba6331d70bcfa1eb8cf977c52948c4f2b53df3']);
+  setCfIfEmpty('113a8ed69dfd080a7d1b84392251a3474d989216', enriched.employees_category,  cf['113a8ed69dfd080a7d1b84392251a3474d989216']);
+  setCfIfEmpty('95d37d3df1ed511ae90f7fac64eac37a20f4ed83', enriched.org_source,          cf['95d37d3df1ed511ae90f7fac64eac37a20f4ed83']);
+  setCfIfEmpty('e37b931ae0af55393fc51f1b2135c2355b4bea12', enriched.icp_ecosystem,       cf['e37b931ae0af55393fc51f1b2135c2355b4bea12']);
+  setCfIfEmpty('bb5ec6a8351b0d3423011da1f8dbfd89d8590b27', enriched.his_identification,  cf['bb5ec6a8351b0d3423011da1f8dbfd89d8590b27']);
+  setCfIfEmpty('0139565cc0f6a8dcc0cae8244b672600adf64860', finalLinkedin,                cf['0139565cc0f6a8dcc0cae8244b672600adf64860']);
+  setCfIfEmpty('783923cad610ca666dc3ddac86085a6468c7b809', website || '',                cf['783923cad610ca666dc3ddac86085a6468c7b809']);
+  setCfIfEmpty('99c1cffae1ed208819f80c4c3a1b545d461082bb', enriched.phone,              cf['99c1cffae1ed208819f80c4c3a1b545d461082bb']);
+  setCfIfEmpty('b83bf5f8378a2275b475db4dc64b1101ea48836a', enriched.email,              cf['b83bf5f8378a2275b475db4dc64b1101ea48836a']);
+  setCfIfEmpty('b4c2b2ef4b92a130ec7de91f4d17622d5640431e', enriched.company_legal_name, cf['b4c2b2ef4b92a130ec7de91f4d17622d5640431e']);
+  setCfIfEmpty('115cfff712c6caf184d7c155838a9dace81e8821', enriched.his_software_name,  cf['115cfff712c6caf184d7c155838a9dace81e8821']);
+  setCfIfEmpty('4107458f7b06285686f1968fbefa9ea50902cf07', enriched.ceo_name,           cf['4107458f7b06285686f1968fbefa9ea50902cf07']);
+  setCfIfEmpty('6d64ec2abf8d9a01a64c0cbf2f962281845b1c85', enriched.address,            cf['6d64ec2abf8d9a01a64c0cbf2f962281845b1c85']);
+  setCfIfEmpty('aa9502b251dece8bf94fd779579676f711c7c17d', enriched.vat,                cf['aa9502b251dece8bf94fd779579676f711c7c17d']);
+  setCfIfEmpty('0d6adf6f65d52b61826d207cc40357265b6d6402', enriched.registration_number, cf['0d6adf6f65d52b61826d207cc40357265b6d6402']);
   if (enriched.number_of_beds > 0 && isEmpty(cf['03ed00fa62b2687bb7ec4a2b6c3194cc828d81db'])) payload['03ed00fa62b2687bb7ec4a2b6c3194cc828d81db'] = enriched.number_of_beds;
   if (enriched.number_of_branches > 0 && isEmpty(cf['bdc6f4f7031fa45a45aa4cd4cd3014f66f9847cf'])) payload['bdc6f4f7031fa45a45aa4cd4cd3014f66f9847cf'] = enriched.number_of_branches;
   if (enriched.number_of_specialists > 0 && isEmpty(cf['598c7ea3d04ce28a52985dc15a7f74cb6ff977f3'])) payload['598c7ea3d04ce28a52985dc15a7f74cb6ff977f3'] = enriched.number_of_specialists;
 
-  // ─── Step 5: Update Pipedrive ─────────────────────────────────────────────
+  // ─── Step 6: Update Pipedrive ─────────────────────────────────────────────
   if (Object.keys(payload).length > 0) {
     const pdRes = await fetch(
       `https://${PD_DOMAIN}.pipedrive.com/api/v1/organizations/${organizationId}?api_token=${PD_TOKEN}`,
@@ -201,12 +227,10 @@ Return ONLY valid JSON (no markdown, no explanation):
     if (!pdData.success) console.error('Pipedrive error:', JSON.stringify(pdData));
   }
 
-  // ─── Step 6: Add note only if no AI note exists ───────────────────────────
+  // ─── Step 7: Add note if no AI note exists ────────────────────────────────
   if (enriched.company_overview) {
-    const existingNotes = await fetch(
-      `https://${PD_DOMAIN}.pipedrive.com/api/v1/notes?api_token=${PD_TOKEN}&org_id=${organizationId}&limit=10`
-    ).then(r => r.json());
-    const hasAiNote = existingNotes.data?.some(n => n.content?.includes('🤖 AI Enrichment'));
+    const notesRes = await fetch(`https://${PD_DOMAIN}.pipedrive.com/api/v1/notes?api_token=${PD_TOKEN}&org_id=${organizationId}&limit=10`).then(r => r.json());
+    const hasAiNote = notesRes.data?.some(n => n.content?.includes('🤖 AI Enrichment'));
     if (!hasAiNote) {
       await fetch(`https://${PD_DOMAIN}.pipedrive.com/api/v1/notes?api_token=${PD_TOKEN}`, {
         method: 'POST',

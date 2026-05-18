@@ -6,8 +6,9 @@ export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  const { organizationId, name, website } = req.body;
-  if (!organizationId || !name) return res.status(400).json({ error: 'Missing organizationId or name' });
+  const { organizationId } = req.body;
+  let { name, website } = req.body;
+  if (!organizationId) return res.status(400).json({ error: 'Missing organizationId' });
 
   const GROQ_KEY = process.env.GROQ_API_KEY;
   const PD_TOKEN = process.env.PIPEDRIVE_API_TOKEN;
@@ -20,7 +21,11 @@ export default async function handler(req, res) {
       `https://${PD_DOMAIN}.pipedrive.com/api/v1/organizations/${organizationId}?api_token=${PD_TOKEN}`
     );
     const existingData = await existingRes.json();
-    if (existingData.success) existing = existingData.data || {};
+    if (existingData.success) {
+      existing = existingData.data || {};
+      if (!name) name = existing.name || "";
+      if (!website) website = existing.website || existing["783923cad610ca666dc3ddac86085a6468c7b809"] || "";
+    }
   } catch (e) {
     console.error('Failed to get existing org:', e.message);
   }

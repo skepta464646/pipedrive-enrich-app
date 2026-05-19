@@ -27,7 +27,8 @@ export default async function handler(req, res) {
     }
   } catch (e) { console.error('PD fetch error:', e.message); }
 
-  const isEmpty = (val) => val === null || val === undefined || val === '' || val === 0 || val === false;
+  const isEmpty = (val) => val === null || val === undefined || val === '';
+  const isEmptyAI = (val) => val === null || val === undefined || val === '' || val === 0;
 
   // ─── Step 1: Tavily search ────────────────────────────────────────────────
   let searchContext = '';
@@ -41,7 +42,7 @@ export default async function handler(req, res) {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             api_key: TAVILY_KEY,
-            query: `${name} ${website || ''} company healthcare contact phone`,
+            query: `${name} ${website || ''} company healthcare contact phone email address`,
             search_depth: 'basic',
             max_results: 4,
             include_answer: true
@@ -110,7 +111,11 @@ Website: ${website || 'unknown'}
 Address: ${existing.address?.value || 'unknown'}
 ${searchContext ? `\nContext:\n${searchContext}` : ''}
 
-Return JSON with these exact fields:
+IMPORTANT for License Agreement fields (phone, email, company_legal_name, address, vat, registration_number, ceo_name):
+- Fill ONLY from official sources found in search results
+- Leave empty string "" if not found in official sources
+
+Return JSON with these exact fields and numeric IDs:
 {
   "industry": 11,
   "annual_revenue": 0,
@@ -137,18 +142,19 @@ Return JSON with these exact fields:
   "company_overview": ""
 }
 
-ID mappings:
+ID mappings (use ONLY these exact numbers):
 industry: 11=Healthcare, 14=Professional Services, 17=Technology
-annual_revenue: 2=1-10M, 3=10-100M, 4=100-1000M, 5=1-10B
+annual_revenue: 2=1-10M USD, 3=10-100M USD, 4=100-1000M USD, 5=1-10B USD
 employees_category: 49=1-10, 50=11-50, 51=51-200, 52=201-500, 53=501-1000, 54=1001-5000, 55=5001-10000, 56=10001+
 icp: 64=Yes, 65=No, 371=No-too-small, 66=Unknown
 ownership: 1014=Private, 1015=Public, 1016=Unknown
-icp_type: 1017=Hospital, 935=Clinic, 1018=Specialist, 520=Dental, 932=Diagnostic, 939=HIS Software, 937=Nursing Home, 936=Dialysis, 1019=Physio, 1020=Aesthetic, 1021=Ophthalmology, 1022=Radiology, 1023=Rehab, 1024=Mental Health, 934=Maternity/IVF, 931=Home Care, 1028=Unknown
-qualify_status: 62=Has contact, 63=Has contact+email, 61=No contact, 57=To qualify
-icp_ecosystem: 854=Healthcare, 855=HIS Software vendors
-his_identification: 850=Yes, 851=No
+icp_type: 1017=Hospital, 935=Clinic/Polyclinic, 1018=Specialist Practice, 520=Dental Clinic, 932=Diagnostic Center & Laboratory, 939=HIS Software Provider, 937=Nursing Home, 936=Dialysis Clinic, 1019=Physiotherapy Clinic, 1020=Aesthetic & Plastic Surgery Clinic, 1021=Ophthalmology Clinic, 1022=Radiology Center, 1023=Rehabilitation Center, 1024=Mental Health Clinic, 934=Maternity and IVF Clinic, 931=Home Care, 1025=Government Health Center, 1026=University/Teaching Hospital, 1027=Non-Profit/NGO Healthcare, 1029=Occupational Health Center, 1030=Hospice/Palliative Care, 1028=Unknown/Unclassified
+qualify_status: 57=To qualify, 61=Qualified no contact, 62=Qualified with contact, 63=Qualified with contact+email, 724=Qualified with contact+email+phone, 725=Qualified with contact+phone. Pick based on what contact info you found.
+org_source: always 546 (Outbound)
+icp_ecosystem: 854=Healthcare ecosystem, 855=Healthcare software vendors (partnership), 0=not applicable
+his_identification: 850=Yes (uses HIS/RIS/LIS/PACS), 851=No
 
-Fill what you can determine. Use defaults (0, 66, 1016, etc.) for unknowns.`;
+Fill what you can determine. Use defaults for unknowns.`;
 
     const geminiRes = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${GEMINI_KEY}`,
@@ -176,7 +182,7 @@ Fill what you can determine. Use defaults (0, 66, 1016, etc.) for unknowns.`;
     }
 
     const content = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
-    console.log('Gemini content:', content.substring(0, 200));
+    console.log('Gemini content:', content.substring(0, 300));
     enriched = JSON.parse(content.replace(/```json\n?|\n?```/g, '').trim());
   } catch (e) {
     console.error('AI failed:', e.message);
@@ -186,12 +192,13 @@ Fill what you can determine. Use defaults (0, 66, 1016, etc.) for unknowns.`;
   console.log('AI response:', JSON.stringify(enriched));
 
   // ─── Step 3: Auto-corrections ─────────────────────────────────────────────
-  const healthcareTypes = [1017,935,1018,520,932,937,936,1019,1020,1021,1022,1023,1024,934,931];
+  const healthcareTypes = [1017,935,1018,520,932,937,936,1019,1020,1021,1022,1023,1024,934,931,1025,1026,1027,1029,1030];
   if (healthcareTypes.includes(enriched.icp_type) && (enriched.icp === 66 || enriched.icp === 0)) {
     enriched.icp = 64;
   }
   if (enriched.icp_type === 939 && !enriched.icp_ecosystem) enriched.icp_ecosystem = 855;
   if (healthcareTypes.includes(enriched.icp_type) && !enriched.icp_ecosystem) enriched.icp_ecosystem = 854;
+  if (!enriched.icp_ecosystem || enriched.icp_ecosystem === 0) enriched.icp_ecosystem = null;
 
   // ─── Step 4: Validate LinkedIn ────────────────────────────────────────────
   const INVALID_SLUGS = ['unavailable','login','authwall','404','null','undefined','company'];
@@ -213,15 +220,19 @@ Fill what you can determine. Use defaults (0, 66, 1016, etc.) for unknowns.`;
 
   // ─── Step 5: Build payload — only empty fields ────────────────────────────
   const payload = {};
-  const setIfEmpty = (key, val, ev) => { if (!isEmpty(val) && isEmpty(ev)) payload[key] = val; };
-  const setCfIfEmpty = (hash, val, ev) => { if (!isEmpty(val) && isEmpty(ev)) payload[hash] = val; };
+  const setIfEmpty = (key, val, ev) => { if (!isEmptyAI(val) && isEmpty(ev)) payload[key] = val; };
+  const setCfIfEmpty = (hash, val, ev) => { if (!isEmptyAI(val) && isEmpty(ev)) payload[hash] = val; };
 
   setIfEmpty('industry', enriched.industry, existing.industry);
   setIfEmpty('annual_revenue', enriched.annual_revenue > 1 ? enriched.annual_revenue : null, existing.annual_revenue);
   setIfEmpty('employee_count', enriched.employee_count > 0 ? enriched.employee_count : null, existing.employee_count);
   setIfEmpty('linkedin', finalLinkedin, existing.linkedin);
-  if (!isEmpty(enriched.phone) && isEmpty(existing.phone?.[0]?.value)) payload.phone = [{ value: enriched.phone, primary: true, label: 'work' }];
-  if (!isEmpty(enriched.address) && isEmpty(existing.address?.value)) payload.address = { value: enriched.address };
+  if (!isEmpty(enriched.phone) && isEmpty(existing.phone?.[0]?.value)) {
+    payload.phone = [{ value: enriched.phone, primary: true, label: 'work' }];
+  }
+  if (!isEmpty(enriched.address) && isEmpty(existing.address?.value)) {
+    payload.address = enriched.address;
+  }
 
   setCfIfEmpty('0d5afcefbd6ada8781d38fe74873d4b308234a49', enriched.icp,               existing['0d5afcefbd6ada8781d38fe74873d4b308234a49']);
   setCfIfEmpty('5b6f71999f89a4ac00ed32f8bd49bc8480bf459d', enriched.ownership,          existing['5b6f71999f89a4ac00ed32f8bd49bc8480bf459d']);
@@ -233,17 +244,20 @@ Fill what you can determine. Use defaults (0, 66, 1016, etc.) for unknowns.`;
   setCfIfEmpty('bb5ec6a8351b0d3423011da1f8dbfd89d8590b27', enriched.his_identification, existing['bb5ec6a8351b0d3423011da1f8dbfd89d8590b27']);
   setCfIfEmpty('0139565cc0f6a8dcc0cae8244b672600adf64860', finalLinkedin,               existing['0139565cc0f6a8dcc0cae8244b672600adf64860']);
   setCfIfEmpty('783923cad610ca666dc3ddac86085a6468c7b809', website || '',               existing['783923cad610ca666dc3ddac86085a6468c7b809']);
-  setCfIfEmpty('99c1cffae1ed208819f80c4c3a1b545d461082bb', enriched.phone,             existing['99c1cffae1ed208819f80c4c3a1b545d461082bb']);
-  setCfIfEmpty('b83bf5f8378a2275b475db4dc64b1101ea48836a', enriched.email,             existing['b83bf5f8378a2275b475db4dc64b1101ea48836a']);
-  setCfIfEmpty('b4c2b2ef4b92a130ec7de91f4d17622d5640431e', enriched.company_legal_name,existing['b4c2b2ef4b92a130ec7de91f4d17622d5640431e']);
-  setCfIfEmpty('115cfff712c6caf184d7c155838a9dace81e8821', enriched.his_software_name, existing['115cfff712c6caf184d7c155838a9dace81e8821']);
-  setCfIfEmpty('4107458f7b06285686f1968fbefa9ea50902cf07', enriched.ceo_name,          existing['4107458f7b06285686f1968fbefa9ea50902cf07']);
-  setCfIfEmpty('6d64ec2abf8d9a01a64c0cbf2f962281845b1c85', enriched.address,           existing['6d64ec2abf8d9a01a64c0cbf2f962281845b1c85']);
-  setCfIfEmpty('aa9502b251dece8bf94fd779579676f711c7c17d', enriched.vat,               existing['aa9502b251dece8bf94fd779579676f711c7c17d']);
-  setCfIfEmpty('0d6adf6f65d52b61826d207cc40357265b6d6402', enriched.registration_number,existing['0d6adf6f65d52b61826d207cc40357265b6d6402']);
-  if (enriched.number_of_beds > 0 && isEmpty(existing['03ed00fa62b2687bb7ec4a2b6c3194cc828d81db'])) payload['03ed00fa62b2687bb7ec4a2b6c3194cc828d81db'] = enriched.number_of_beds;
-  if (enriched.number_of_branches > 0 && isEmpty(existing['bdc6f4f7031fa45a45aa4cd4cd3014f66f9847cf'])) payload['bdc6f4f7031fa45a45aa4cd4cd3014f66f9847cf'] = enriched.number_of_branches;
-  if (enriched.number_of_specialists > 0 && isEmpty(existing['598c7ea3d04ce28a52985dc15a7f74cb6ff977f3'])) payload['598c7ea3d04ce28a52985dc15a7f74cb6ff977f3'] = enriched.number_of_specialists;
+  setCfIfEmpty('99c1cffae1ed208819f80c4c3a1b545d461082bb', enriched.phone,              existing['99c1cffae1ed208819f80c4c3a1b545d461082bb']);
+  setCfIfEmpty('b83bf5f8378a2275b475db4dc64b1101ea48836a', enriched.email,              existing['b83bf5f8378a2275b475db4dc64b1101ea48836a']);
+  setCfIfEmpty('b4c2b2ef4b92a130ec7de91f4d17622d5640431e', enriched.company_legal_name, existing['b4c2b2ef4b92a130ec7de91f4d17622d5640431e']);
+  setCfIfEmpty('115cfff712c6caf184d7c155838a9dace81e8821', enriched.his_software_name,  existing['115cfff712c6caf184d7c155838a9dace81e8821']);
+  setCfIfEmpty('4107458f7b06285686f1968fbefa9ea50902cf07', enriched.ceo_name,           existing['4107458f7b06285686f1968fbefa9ea50902cf07']);
+  setCfIfEmpty('6d64ec2abf8d9a01a64c0cbf2f962281845b1c85', enriched.address,            existing['6d64ec2abf8d9a01a64c0cbf2f962281845b1c85']);
+  setCfIfEmpty('aa9502b251dece8bf94fd779579676f711c7c17d', enriched.vat,                existing['aa9502b251dece8bf94fd779579676f711c7c17d']);
+  setCfIfEmpty('0d6adf6f65d52b61826d207cc40357265b6d6402', enriched.registration_number, existing['0d6adf6f65d52b61826d207cc40357265b6d6402']);
+  if (enriched.number_of_beds > 0 && isEmpty(existing['03ed00fa62b2687bb7ec4a2b6c3194cc828d81db']))
+    payload['03ed00fa62b2687bb7ec4a2b6c3194cc828d81db'] = enriched.number_of_beds;
+  if (enriched.number_of_branches > 0 && isEmpty(existing['bdc6f4f7031fa45a45aa4cd4cd3014f66f9847cf']))
+    payload['bdc6f4f7031fa45a45aa4cd4cd3014f66f9847cf'] = enriched.number_of_branches;
+  if (enriched.number_of_specialists > 0 && isEmpty(existing['598c7ea3d04ce28a52985dc15a7f74cb6ff977f3']))
+    payload['598c7ea3d04ce28a52985dc15a7f74cb6ff977f3'] = enriched.number_of_specialists;
 
   console.log('Payload keys:', Object.keys(payload));
 

@@ -30,13 +30,113 @@ export default async function handler(req, res) {
   const isEmpty = (val) => val === null || val === undefined || val === '';
   const isEmptyAI = (val) => val === null || val === undefined || val === '' || val === 0;
 
+  // ─── Helper: employees count → category ID ────────────────────────────────
+  function employeesToCategory(count) {
+    if (!count || count <= 0) return 0;
+    if (count <= 10) return 49;
+    if (count <= 50) return 50;
+    if (count <= 200) return 51;
+    if (count <= 500) return 52;
+    if (count <= 1000) return 53;
+    if (count <= 5000) return 54;
+    if (count <= 10000) return 55;
+    return 56;
+  }
+
+  // ─── Helper: detect country registry from website/name ───────────────────
+  function getCountryRegistry(websiteUrl, companyName) {
+    const domain = websiteUrl?.toLowerCase() || '';
+    const nameLower = companyName?.toLowerCase() || '';
+
+    // Lithuanian indicators
+    if (domain.includes('.lt') || nameLower.includes(', uab') || nameLower.includes(', ab') || nameLower.includes(', vĮ') || nameLower.includes(', mb')) {
+      return { country: 'lt', registry: 'rekvizitai.lt' };
+    }
+    // Polish indicators
+    if (domain.includes('.pl') || nameLower.includes(' sp. z o.o') || nameLower.includes(' s.a.') || nameLower.includes(' sp.k')) {
+      return { country: 'pl', registry: 'aleo.com' };
+    }
+    // Swedish indicators
+    if (domain.includes('.se') || nameLower.includes(' ab') || nameLower.includes(' hb')) {
+      return { country: 'se', registry: 'allabolag.se' };
+    }
+    // German indicators
+    if (domain.includes('.de') || nameLower.includes(' gmbh') || nameLower.includes(' ag')) {
+      return { country: 'de', registry: 'northdata.com' };
+    }
+    // Greek indicators
+    if (domain.includes('.gr')) {
+      return { country: 'gr', registry: 'businessregistry.gr' };
+    }
+    // Portuguese indicators
+    if (domain.includes('.pt') || nameLower.includes(' lda') || nameLower.includes(', lda')) {
+      return { country: 'pt', registry: 'racius.pt' };
+    }
+    // Finnish indicators
+    if (domain.includes('.fi') || nameLower.includes(' oy') || nameLower.includes(' oyj')) {
+      return { country: 'fi', registry: 'finder.fi' };
+    }
+    // Norwegian indicators
+    if (domain.includes('.no') || nameLower.includes(' as ') || nameLower.includes(' asa')) {
+      return { country: 'no', registry: 'proff.no' };
+    }
+    // Danish indicators
+    if (domain.includes('.dk') || nameLower.includes(' a/s') || nameLower.includes(' aps')) {
+      return { country: 'dk', registry: 'cvr.dk' };
+    }
+    // Dutch indicators
+    if (domain.includes('.nl') || nameLower.includes(' b.v.') || nameLower.includes(' n.v.')) {
+      return { country: 'nl', registry: 'kvk.nl' };
+    }
+    // Czech indicators
+    if (domain.includes('.cz') || nameLower.includes(' s.r.o') || nameLower.includes(' a.s.')) {
+      return { country: 'cz', registry: 'rejstrik.penize.cz' };
+    }
+    // Hungarian indicators
+    if (domain.includes('.hu') || nameLower.includes(' kft') || nameLower.includes(' zrt')) {
+      return { country: 'hu', registry: 'e-cegjegyzek.hu' };
+    }
+    // Romanian indicators
+    if (domain.includes('.ro') || nameLower.includes(' srl') || nameLower.includes(' sa')) {
+      return { country: 'ro', registry: 'listafirme.ro' };
+    }
+    // Bulgarian indicators
+    if (domain.includes('.bg')) {
+      return { country: 'bg', registry: 'papagal.bg' };
+    }
+    // Croatian indicators
+    if (domain.includes('.hr') || nameLower.includes(' d.o.o') || nameLower.includes(' d.d.')) {
+      return { country: 'hr', registry: 'fininfo.hr' };
+    }
+    // Estonian indicators
+    if (domain.includes('.ee') || nameLower.includes(' oü') || nameLower.includes(' as')) {
+      return { country: 'ee', registry: 'teatmik.ee' };
+    }
+    // Latvian indicators
+    if (domain.includes('.lv') || nameLower.includes(' sia') || nameLower.includes(' as')) {
+      return { country: 'lv', registry: 'lursoft.lv' };
+    }
+    // Turkish indicators
+    if (domain.includes('.com.tr') || domain.includes('.tr')) {
+      return { country: 'tr', registry: 'sirketbilgileri.com' };
+    }
+
+    return null;
+  }
+
   // ─── Step 1: Tavily search ────────────────────────────────────────────────
   let searchContext = '';
   let foundLinkedinUrl = '';
+  let registryContext = '';
 
   if (TAVILY_KEY && name) {
     try {
-      const [generalRes, linkedinRes] = await Promise.all([
+      // Detect country registry
+      const countryInfo = getCountryRegistry(website, name);
+
+      // Build search queries
+      const searchQueries = [
+        // General search
         fetch('https://api.tavily.com/search', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -44,10 +144,11 @@ export default async function handler(req, res) {
             api_key: TAVILY_KEY,
             query: `${name} ${website || ''} company healthcare contact phone email address`,
             search_depth: 'basic',
-            max_results: 4,
+            max_results: 3,
             include_answer: true
           })
         }),
+        // LinkedIn search
         fetch('https://api.tavily.com/search', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -59,21 +160,48 @@ export default async function handler(req, res) {
             include_answer: false
           })
         })
-      ]);
+      ];
 
-      const [generalData, linkedinData] = await Promise.all([
-        generalRes.json(),
-        linkedinRes.json()
-      ]);
+      // Country registry search if detected
+      if (countryInfo) {
+        searchQueries.push(
+          fetch('https://api.tavily.com/search', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              api_key: TAVILY_KEY,
+              query: `"${name}" site:${countryInfo.registry}`,
+              search_depth: 'basic',
+              max_results: 2,
+              include_answer: false
+            })
+          })
+        );
+      }
 
+      const responses = await Promise.all(searchQueries);
+      const [generalData, linkedinData, registryData] = await Promise.all(responses.map(r => r.json()));
+
+      // General context
       if (generalData.answer) searchContext += `Summary: ${generalData.answer}\n\n`;
       if (generalData.results?.length > 0) {
         searchContext += 'Web results:\n';
-        generalData.results.slice(0, 3).forEach(r => {
+        generalData.results.forEach(r => {
           searchContext += `- ${r.title}: ${r.content?.substring(0, 200)}\n`;
         });
       }
 
+      // Registry context
+      if (registryData?.results?.length > 0) {
+        registryContext += `\nOfficial registry (${countryInfo.registry}):\n`;
+        registryData.results.forEach(r => {
+          registryContext += `- ${r.title}: ${r.content?.substring(0, 400)}\n`;
+        });
+        searchContext += registryContext;
+        console.log('Registry found:', countryInfo.registry);
+      }
+
+      // LinkedIn validation
       const liResult = linkedinData.results?.find(r => r.url?.includes('linkedin.com/company/'));
       if (liResult) {
         const nameWords = name.toLowerCase().split(/\s+/).filter(w => w.length > 3);
@@ -100,7 +228,7 @@ export default async function handler(req, res) {
   }
 
   // ─── Step 2: AI enrichment with Gemini ───────────────────────────────────
-  searchContext = searchContext.slice(0, 1500);
+  searchContext = searchContext.slice(0, 2000);
   let enriched = {};
   try {
     const prompt = `You are a B2B healthcare CRM specialist. Return ONLY valid JSON, no markdown, no explanation.
@@ -109,13 +237,14 @@ Enrich this company:
 Name: ${name}
 Website: ${website || 'unknown'}
 Address: ${existing.address?.value || 'unknown'}
-${searchContext ? `\nContext:\n${searchContext}` : ''}
+${searchContext ? `\nContext (includes official registry data if available):\n${searchContext}` : ''}
 
-IMPORTANT for License Agreement fields (phone, email, company_legal_name, address, vat, registration_number, ceo_name):
-- Fill ONLY from official sources found in search results
-- Leave empty string "" if not found in official sources
+IMPORTANT:
+- For License Agreement fields (phone, email, company_legal_name, address, vat, registration_number, ceo_name): fill ONLY from official registry or website sources in the context above
+- If registry data is present, extract company_legal_name, registration_number, vat, address, ceo_name from it
+- For qualify_status: check if phone or email was found in context
 
-Return JSON with these exact fields and numeric IDs:
+Return JSON with these exact fields:
 {
   "industry": 11,
   "annual_revenue": 0,
@@ -142,19 +271,17 @@ Return JSON with these exact fields and numeric IDs:
   "company_overview": ""
 }
 
-ID mappings (use ONLY these exact numbers):
+ID mappings:
 industry: 11=Healthcare, 14=Professional Services, 17=Technology
 annual_revenue: 2=1-10M USD, 3=10-100M USD, 4=100-1000M USD, 5=1-10B USD
 employees_category: 49=1-10, 50=11-50, 51=51-200, 52=201-500, 53=501-1000, 54=1001-5000, 55=5001-10000, 56=10001+
 icp: 64=Yes, 65=No, 371=No-too-small, 66=Unknown
 ownership: 1014=Private, 1015=Public, 1016=Unknown
-icp_type: 1017=Hospital, 935=Clinic/Polyclinic, 1018=Specialist Practice, 520=Dental Clinic, 932=Diagnostic Center & Laboratory, 939=HIS Software Provider, 937=Nursing Home, 936=Dialysis Clinic, 1019=Physiotherapy Clinic, 1020=Aesthetic & Plastic Surgery Clinic, 1021=Ophthalmology Clinic, 1022=Radiology Center, 1023=Rehabilitation Center, 1024=Mental Health Clinic, 934=Maternity and IVF Clinic, 931=Home Care, 1025=Government Health Center, 1026=University/Teaching Hospital, 1027=Non-Profit/NGO Healthcare, 1029=Occupational Health Center, 1030=Hospice/Palliative Care, 1028=Unknown/Unclassified
-qualify_status: 57=To qualify, 61=Qualified no contact, 62=Qualified with contact, 63=Qualified with contact+email, 724=Qualified with contact+email+phone, 725=Qualified with contact+phone. Pick based on what contact info you found.
-org_source: always 546 (Outbound)
-icp_ecosystem: 854=Healthcare ecosystem, 855=Healthcare software vendors (partnership), 0=not applicable
-his_identification: 850=Yes (uses HIS/RIS/LIS/PACS), 851=No
-
-Fill what you can determine. Use defaults for unknowns.`;
+icp_type: 1017=Hospital, 935=Clinic/Polyclinic, 1018=Specialist Practice, 520=Dental Clinic, 932=Diagnostic Center, 939=HIS Software Provider, 937=Nursing Home, 936=Dialysis Clinic, 1019=Physiotherapy Clinic, 1020=Aesthetic Surgery Clinic, 1021=Ophthalmology Clinic, 1022=Radiology Center, 1023=Rehabilitation Center, 1024=Mental Health Clinic, 934=Maternity/IVF Clinic, 931=Home Care, 1025=Government Health Center, 1026=University/Teaching Hospital, 1027=Non-Profit/NGO, 1029=Occupational Health Center, 1030=Hospice/Palliative Care, 1028=Unknown
+qualify_status: 57=To qualify, 61=Qualified no contact, 62=Qualified with contact, 63=Qualified with contact+email, 724=Qualified with contact+email+phone, 725=Qualified with contact+phone
+org_source: always 546
+icp_ecosystem: 854=Healthcare ecosystem, 855=Healthcare software vendors, 0=not applicable
+his_identification: 850=Yes, 851=No`;
 
     const geminiRes = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${GEMINI_KEY}`,
@@ -193,12 +320,26 @@ Fill what you can determine. Use defaults for unknowns.`;
 
   // ─── Step 3: Auto-corrections ─────────────────────────────────────────────
   const healthcareTypes = [1017,935,1018,520,932,937,936,1019,1020,1021,1022,1023,1024,934,931,1025,1026,1027,1029,1030];
+
+  // ICP auto-set
   if (healthcareTypes.includes(enriched.icp_type) && (enriched.icp === 66 || enriched.icp === 0)) {
     enriched.icp = 64;
   }
-  if (enriched.icp_type === 939 && !enriched.icp_ecosystem) enriched.icp_ecosystem = 855;
-  if (healthcareTypes.includes(enriched.icp_type) && !enriched.icp_ecosystem) enriched.icp_ecosystem = 854;
-  if (!enriched.icp_ecosystem || enriched.icp_ecosystem === 0) enriched.icp_ecosystem = null;
+
+  // ICP Ecosystem auto-set
+  if (enriched.icp_type === 939) enriched.icp_ecosystem = 855;
+  else if (healthcareTypes.includes(enriched.icp_type)) enriched.icp_ecosystem = 854;
+  else enriched.icp_ecosystem = null;
+
+  // Employees category from exact count
+  const exactCount = enriched.employee_count || existing.employee_count;
+  if (exactCount > 0 && isEmptyAI(enriched.employees_category)) {
+    enriched.employees_category = employeesToCategory(exactCount);
+  }
+  // Also if exact count known, fill category even if AI gave one (exact count is more reliable)
+  if (enriched.employee_count > 0) {
+    enriched.employees_category = employeesToCategory(enriched.employee_count);
+  }
 
   // ─── Step 4: Validate LinkedIn ────────────────────────────────────────────
   const INVALID_SLUGS = ['unavailable','login','authwall','404','null','undefined','company'];
@@ -271,15 +412,21 @@ Fill what you can determine. Use defaults for unknowns.`;
     if (!pdData.success) console.error('Pipedrive error:', JSON.stringify(pdData));
   }
 
-  // ─── Step 7: Add note ─────────────────────────────────────────────────────
+  // ─── Step 7: Add note with sources ───────────────────────────────────────
   if (enriched.company_overview) {
     const notesRes = await fetch(`https://${PD_DOMAIN}.pipedrive.com/api/v1/notes?api_token=${PD_TOKEN}&org_id=${organizationId}&limit=10`).then(r => r.json());
     const hasAiNote = notesRes.data?.some(n => n.content?.includes('🤖 AI Enrichment'));
     if (!hasAiNote) {
+      const countryInfo = getCountryRegistry(website, name);
+      const sources = ['Tavily web search', 'Gemini AI'];
+      if (countryInfo) sources.push(`${countryInfo.registry} (official registry)`);
+      if (foundLinkedinUrl) sources.push('LinkedIn');
+
+      const noteContent = `🤖 AI Enrichment\n\n${enriched.company_overview}\n\n📊 Sources: ${sources.join(', ')}`;
       await fetch(`https://${PD_DOMAIN}.pipedrive.com/api/v1/notes?api_token=${PD_TOKEN}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content: `🤖 AI Enrichment\n\n${enriched.company_overview}`, org_id: organizationId })
+        body: JSON.stringify({ content: noteContent, org_id: organizationId })
       });
     }
   }
@@ -288,6 +435,7 @@ Fill what you can determine. Use defaults for unknowns.`;
     success: true,
     fields_filled: Object.keys(payload).length,
     tavily_used: !!searchContext,
-    linkedin_found: !!finalLinkedin
+    linkedin_found: !!finalLinkedin,
+    registry_used: !!registryContext
   });
 }

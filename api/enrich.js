@@ -49,7 +49,7 @@ export default async function handler(req, res) {
     const nameLower = companyName?.toLowerCase() || '';
     if (domain.includes('.lt') || nameLower.includes(', uab') || nameLower.includes(', ab') || nameLower.includes(', vi') || nameLower.includes(', mb'))
       return { country: 'lt', registry: 'rekvizitai.lt' };
-    if (domain.includes('.pl') || nameLower.includes(' sp. z o.o') || nameLower.includes(' s.a.') || nameLower.includes(' sp.k'))
+    if (domain.includes('.pl') || nameLower.includes(' sp. z o.o') || nameLower.includes(' s.a.') || nameLower.includes(' sp.k') || nameLower.includes('spolka'))
       return { country: 'pl', registry: 'aleo.com' };
     if (domain.includes('.se') || nameLower.includes(' ab ') || nameLower.endsWith(' ab'))
       return { country: 'se', registry: 'allabolag.se' };
@@ -89,7 +89,7 @@ export default async function handler(req, res) {
   // ─── Helper: detect private ownership from legal form ────────────────────
   function isPrivateLegalForm(companyName) {
     const n = companyName?.toLowerCase() || '';
-    const privateForms = [', uab', ', mb', ' sp. z o.o', ' s.r.o', ' gmbh', ' b.v.', ', lda', ' kft', ' oü', ' sia', ' srl', ' d.o.o', ' aps', ' bv', ' sas', ' sarl'];
+    const privateForms = [', uab', ', mb', ' sp. z o.o', ' s.r.o', ' gmbh', ' b.v.', ', lda', ' kft', ' oü', ' sia', ' srl', ' d.o.o', ' aps', ' bv', ' sas', ' sarl', 'spolka z ograniczona'];
     return privateForms.some(f => n.includes(f));
   }
 
@@ -154,15 +154,28 @@ export default async function handler(req, res) {
         });
       }
 
+      // Registry: snippets + full extract
       if (registryData?.results?.length > 0) {
         registryContext += `\nOfficial registry (${countryInfo.registry}):\n`;
         registryData.results.forEach(r => {
-          registryContext += `- ${r.title}: ${r.content?.substring(0, 400)}\n`;
+          registryContext += `- ${r.title}: ${r.content?.substring(0, 200)}\n`;
         });
+        // Extract full content from first registry result
+        try {
+          const regExtractRes = await fetch('https://api.tavily.com/extract', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ api_key: TAVILY_KEY, urls: [registryData.results[0].url] })
+          });
+          const regExtractData = await regExtractRes.json();
+          const regContent = regExtractData.results?.[0]?.raw_content || '';
+          if (regContent) registryContext += `\nFull registry data:\n${regContent.substring(0, 1500)}\n`;
+        } catch { console.log('Registry extract failed'); }
         searchContext += registryContext;
         console.log('Registry found:', countryInfo.registry);
       }
 
+      // LinkedIn validation
       const liResult = linkedinData.results?.find(r => r.url?.includes('linkedin.com/company/'));
       if (liResult) {
         const nameWords = name.toLowerCase().split(/\s+/).filter(w => w.length > 3);
@@ -189,7 +202,7 @@ export default async function handler(req, res) {
   }
 
   // ─── Step 2: AI enrichment with Gemini ───────────────────────────────────
-  searchContext = searchContext.slice(0, 2000);
+  searchContext = searchContext.slice(0, 3000);
   let enriched = {};
   try {
     const prompt = `You are a B2B healthcare CRM specialist. Return ONLY valid JSON, no markdown, no explanation.
@@ -201,10 +214,13 @@ Address: ${existing.address?.value || 'unknown'}
 ${searchContext ? `\nContext (includes official registry data if available):\n${searchContext}` : ''}
 
 IMPORTANT:
-- License Agreement fields (phone, email, company_legal_name, address, vat, registration_number, ceo_name): fill ONLY from official registry or website sources found in context above. Leave "" if not found.
-- ceo_name: extract director/CEO/manager full name from registry data (look for "Vadovas", "Direktor", "Director", "CEO", "Manager", "President of the Management Board", "Prezes Zarządu" labels) - vat: extract TAX ID / NIP / VAT number from registry data - registration_number: extract KRS / National Court Register number from registry data   - address: extract legal address / registered address from registry data
-- qualify_status: set based on what contact info was found (phone/email in context)
-- annual_revenue: estimate from revenue data if found in registry (e.g. "424 602 €" → use 2 for 1-10M USD)
+- License Agreement fields: fill ONLY from official registry or website sources in context. Leave "" if not found.
+- ceo_name: extract from registry (look for "Vadovas", "Director", "CEO", "President of the Management Board", "Prezes Zarządu")
+- vat: extract TAX ID / NIP / VAT number from registry
+- registration_number: extract KRS / National Court Register / REGON number from registry
+- address: extract legal/registered address from registry
+- qualify_status: set based on contact info found (phone/email)
+- annual_revenue: use 2=1-10M USD, 3=10-100M, 4=100-1000M, 5=1-10B. Use 0 if below 1M USD or unknown.
 
 Return JSON:
 {
@@ -235,7 +251,7 @@ Return JSON:
 
 ID mappings:
 industry: 11=Healthcare, 14=Professional Services, 17=Technology
-annual_revenue: 2=1-10M USD, 3=10-100M USD, 4=100-1000M USD, 5=1-10B USD
+annual_revenue: 2=1-10M USD, 3=10-100M USD, 4=100-1000M USD, 5=1-10B USD. Use 0 if below 1M or unknown.
 employees_category: 49=1-10, 50=11-50, 51=51-200, 52=201-500, 53=501-1000, 54=1001-5000, 55=5001-10000, 56=10001+
 icp: 64=Yes, 65=No, 371=No-too-small, 66=Unknown
 ownership: 1014=Private, 1015=Public, 1016=Unknown
@@ -280,20 +296,16 @@ his_identification: 850=Yes, 851=No`;
   // ─── Step 3: Auto-corrections ─────────────────────────────────────────────
   const healthcareTypes = [1017,935,1018,520,932,937,936,1019,1020,1021,1022,1023,1024,934,931,1025,1026,1027,1029,1030];
 
-  // ICP auto-set for healthcare
   if (healthcareTypes.includes(enriched.icp_type) && (enriched.icp === 66 || enriched.icp === 0))
     enriched.icp = 64;
 
-  // ICP Ecosystem auto-set
   if (enriched.icp_type === 939) enriched.icp_ecosystem = 855;
   else if (healthcareTypes.includes(enriched.icp_type)) enriched.icp_ecosystem = 854;
   else enriched.icp_ecosystem = null;
 
-  // Ownership auto-set from legal form
   if (isPrivateLegalForm(name) && enriched.ownership === 1016)
     enriched.ownership = 1014;
 
-  // Employees category from exact count (exact count overrides AI category)
   if (enriched.employee_count > 0)
     enriched.employees_category = employeesToCategory(enriched.employee_count);
   else if (existing.employee_count > 0 && isEmptyAI(enriched.employees_category))
@@ -323,7 +335,6 @@ his_identification: 850=Yes, 851=No`;
   const setCfIfEmpty = (hash, val, ev) => { if (!isEmptyAI(val) && isEmpty(ev)) payload[hash] = val; };
 
   setIfEmpty('industry', enriched.industry, existing.industry);
-  // Annual revenue: fill if empty OR if existing is 0 (placeholder)
   if (enriched.annual_revenue > 1 && (isEmpty(existing.annual_revenue) || existing.annual_revenue === 0))
     payload.annual_revenue = enriched.annual_revenue;
   setIfEmpty('employee_count', enriched.employee_count > 0 ? enriched.employee_count : null, existing.employee_count);

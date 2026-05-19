@@ -46,7 +46,7 @@ export default async function handler(req, res) {
 
   // ─── Helper: detect country registry from website/name ───────────────────
   function getCountryRegistry(websiteUrl, companyName) {
-    const domain = (websiteUrl?.toLowerCase() || '').replace(/https?:\/\/(www\.)?/, '');
+    const domain = websiteUrl?.toLowerCase() || '';
     const nameLower = companyName?.toLowerCase() || '';
     if (domain.includes('.lt') || nameLower.includes(', uab') || nameLower.includes(', ab') || nameLower.includes(', vi') || nameLower.includes(', mb'))
       return { country: 'lt', registry: 'rekvizitai.lt' };
@@ -103,9 +103,9 @@ export default async function handler(req, res) {
     try {
       const countryInfo = getCountryRegistry(website, name);
 
-const websiteDomain = website
-  ? website.replace(/https?:\/\//, '').replace(/^www\./, '').split('/')[0].trim()
-  : '';
+      const websiteDomain = website
+        ? website.replace(/https?:\/\/(www\.)?/, '').split('/')[0].trim()
+        : '';
 
       const searchQueries = [
         fetch('https://api.tavily.com/search', {
@@ -133,27 +133,63 @@ const websiteDomain = website
       ];
 
       if (countryInfo) {
-        const registryQuery = websiteDomain
+        // Run BOTH domain-based and name-based registry queries in parallel
+        const registryQueryDomain = websiteDomain
           ? `${websiteDomain} site:${countryInfo.registry}`
-          : `"${name}" site:${countryInfo.registry}`;
+          : null;
+        const registryQueryName = `"${name}" site:${countryInfo.registry}`;
 
-        searchQueries.push(
+        const registryFetches = [
           fetch('https://api.tavily.com/search', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               api_key: TAVILY_KEY,
-              query: registryQuery,
+              query: registryQueryName,
               search_depth: 'basic',
               max_results: 3,
               include_answer: false
             })
           })
-        );
+        ];
+
+        if (registryQueryDomain) {
+          registryFetches.push(
+            fetch('https://api.tavily.com/search', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                api_key: TAVILY_KEY,
+                query: registryQueryDomain,
+                search_depth: 'basic',
+                max_results: 3,
+                include_answer: false
+              })
+            })
+          );
+        }
+
+        searchQueries.push(...registryFetches);
       }
 
       const responses = await Promise.all(searchQueries);
-      const [generalData, linkedinData, registryData] = await Promise.all(responses.map(r => r.json()));
+      const jsonResponses = await Promise.all(responses.map(r => r.json()));
+      const generalData = jsonResponses[0];
+      const linkedinData = jsonResponses[1];
+      // Registry: pick whichever query returned more/better results
+      let registryData = null;
+      if (countryInfo) {
+        const regByName = jsonResponses[2];
+        const regByDomain = jsonResponses[3];
+        // Prefer domain result if it has results, otherwise use name result
+        if (regByDomain?.results?.length > 0) {
+          registryData = regByDomain;
+          console.log('Registry found by domain:', websiteDomain);
+        } else if (regByName?.results?.length > 0) {
+          registryData = regByName;
+          console.log('Registry found by name:', name);
+        }
+      }
 
       if (generalData.answer) searchContext += `Summary: ${generalData.answer}\n\n`;
       if (generalData.results?.length > 0) {
@@ -180,7 +216,9 @@ const websiteDomain = website
           if (regContent) registryContext += `\nFull registry data:\n${regContent.substring(0, 1500)}\n`;
         } catch { console.log('Registry extract failed'); }
         searchContext += registryContext;
-        console.log('Registry found:', countryInfo.registry, '| domain:', websiteDomain);
+        console.log('Registry context length:', registryContext.length);
+      } else {
+        console.log('Registry NOT found for:', name, '| domain:', websiteDomain, '| registry:', countryInfo?.registry);
       }
 
       // LinkedIn validation
@@ -279,8 +317,7 @@ icp_ecosystem: 854=Healthcare ecosystem, 855=Healthcare software vendors, 0=not 
 his_identification: 850=Yes, 851=No`;
 
     const geminiRes = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent
-?key=${GEMINI_KEY}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${GEMINI_KEY}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

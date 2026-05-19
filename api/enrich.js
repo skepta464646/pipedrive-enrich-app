@@ -279,7 +279,8 @@ icp_ecosystem: 854=Healthcare ecosystem, 855=Healthcare software vendors, 0=not 
 his_identification: 850=Yes, 851=No`;
 
     const geminiRes = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${GEMINI_KEY}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent
+?key=${GEMINI_KEY}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

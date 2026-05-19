@@ -102,11 +102,11 @@ export default async function handler(req, res) {
   searchContext = searchContext.slice(0, 1500);
   let enriched = {};
   try {
-    const groqRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${GROQ_KEY}` },
-      body: JSON.stringify({
-        model: 'llama-3.1-8b-instant',
+const groqRes = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}` },
+  body: JSON.stringify({
+    model: 'meta-llama/llama-3.1-8b-instruct:free',
         max_tokens: 800,
         messages: [
           {

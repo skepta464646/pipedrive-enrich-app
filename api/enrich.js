@@ -11,7 +11,7 @@ export default async function handler(req, res) {
   let { name, website } = req.body;
   if (!organizationId) return res.status(400).json({ error: 'Missing organizationId' });
 
-  const GEMINI_KEY = process.env.GEMINI_API_KEY;
+  const OPENAI_KEY = process.env.OPENAI_API_KEY;
   const PD_TOKEN = process.env.PIPEDRIVE_API_TOKEN;
   const PD_DOMAIN = process.env.PIPEDRIVE_DOMAIN;
   const TAVILY_KEY = process.env.TAVILY_API_KEY;
@@ -316,36 +316,36 @@ org_source: always 546
 icp_ecosystem: 854=Healthcare ecosystem, 855=Healthcare software vendors, 0=not applicable
 his_identification: 850=Yes, 851=No`;
 
-    const geminiRes = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${GEMINI_KEY}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: { temperature: 0.1, maxOutputTokens: 800 }
-        })
-      }
-    );
+    const aiRes = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${OPENAI_KEY}`
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini',
+        messages: [{ role: 'user', content: prompt }],
+        temperature: 0.1,
+        max_tokens: 800
+      })
+    });
 
-    const geminiData = await geminiRes.json();
-    console.log('Gemini status:', geminiRes.status);
+    const aiData = await aiRes.json();
+    console.log('OpenAI status:', aiRes.status);
 
-    if (geminiRes.status === 401 || geminiRes.status === 403)
-      return res.status(200).json({ success: false, error: '❌ Gemini API key invalid or expired. Check GEMINI_API_KEY in Vercel env vars.', ...errorBase });
-    if (geminiRes.status === 429) {
-      const retryAfter = geminiRes.headers.get('retry-after') || '60';
-      return res.status(200).json({ success: false, error: `⏳ Gemini quota exceeded. Daily/minute limit reached. Retry after ${retryAfter}s. Check: console.cloud.google.com`, ...errorBase });
+    if (aiRes.status === 401)
+      return res.status(200).json({ success: false, error: '❌ OpenAI API key invalid or expired. Check OPENAI_API_KEY in Vercel env vars.', ...errorBase });
+    if (aiRes.status === 429) {
+      const retryAfter = aiRes.headers.get('retry-after') || '60';
+      return res.status(200).json({ success: false, error: `⏳ OpenAI quota exceeded or rate limit. Retry after ${retryAfter}s. Check: platform.openai.com/usage`, ...errorBase });
     }
-    if (geminiRes.status === 503)
-      return res.status(200).json({ success: false, error: '🔄 Gemini overloaded (503). High demand — try again in 1-2 minutes.', ...errorBase });
-    if (geminiRes.status === 500)
-      return res.status(200).json({ success: false, error: '💥 Gemini internal error (500). Try again shortly.', ...errorBase });
-    if (!geminiRes.ok)
-      return res.status(200).json({ success: false, error: `❌ Gemini error ${geminiRes.status}: ${geminiData.error?.message || 'Unknown'}. Check console.cloud.google.com`, ...errorBase });
+    if (aiRes.status === 500 || aiRes.status === 503)
+      return res.status(200).json({ success: false, error: `🔄 OpenAI error (${aiRes.status}). Try again shortly.`, ...errorBase });
+    if (!aiRes.ok)
+      return res.status(200).json({ success: false, error: `❌ OpenAI error ${aiRes.status}: ${aiData.error?.message || 'Unknown'}. Check platform.openai.com`, ...errorBase });
 
-    const content = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
-    console.log('Gemini content:', content.substring(0, 300));
+    const content = aiData.choices?.[0]?.message?.content || '{}';
+    console.log('OpenAI content:', content.substring(0, 300));
     enriched = JSON.parse(content.replace(/```json\n?|\n?```/g, '').trim());
   } catch (e) {
     console.error('AI failed:', e.message);
@@ -448,7 +448,7 @@ his_identification: 850=Yes, 851=No`;
     const hasAiNote = notesRes.data?.some(n => n.content?.includes('🤖 AI Enrichment'));
     if (!hasAiNote) {
       const countryInfo = getCountryRegistry(website, name);
-      const sources = ['Tavily web search', 'Gemini AI'];
+      const sources = ['Tavily web search', 'OpenAI gpt-4o-mini'];
       if (countryInfo) sources.push(`${countryInfo.registry} (official registry)`);
       if (foundLinkedinUrl) sources.push('LinkedIn');
       const noteContent = `🤖 AI Enrichment\n\n${enriched.company_overview}\n\n📊 Sources: ${sources.join(', ')}`;

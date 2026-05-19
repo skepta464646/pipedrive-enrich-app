@@ -102,13 +102,9 @@ export default async function handler(req, res) {
     try {
       const countryInfo = getCountryRegistry(website, name);
 
-      // Build registry query — use domain if available (more reliable than org name)
       const websiteDomain = website
         ? website.replace(/https?:\/\/(www\.)?/, '').split('/')[0].trim()
         : '';
-      const registryQuery = websiteDomain
-        ? `${websiteDomain} site:${countryInfo?.registry}`
-        : `"${name}" site:${countryInfo?.registry}`;
 
       const searchQueries = [
         fetch('https://api.tavily.com/search', {
@@ -136,6 +132,10 @@ export default async function handler(req, res) {
       ];
 
       if (countryInfo) {
+        const registryQuery = websiteDomain
+          ? `${websiteDomain} site:${countryInfo.registry}`
+          : `"${name}" site:${countryInfo.registry}`;
+
         searchQueries.push(
           fetch('https://api.tavily.com/search', {
             method: 'POST',
@@ -144,7 +144,7 @@ export default async function handler(req, res) {
               api_key: TAVILY_KEY,
               query: registryQuery,
               search_depth: 'basic',
-              max_results: 2,
+              max_results: 3,
               include_answer: false
             })
           })
@@ -168,7 +168,6 @@ export default async function handler(req, res) {
         registryData.results.forEach(r => {
           registryContext += `- ${r.title}: ${r.content?.substring(0, 200)}\n`;
         });
-        // Extract full content from first registry result
         try {
           const regExtractRes = await fetch('https://api.tavily.com/extract', {
             method: 'POST',
@@ -180,7 +179,7 @@ export default async function handler(req, res) {
           if (regContent) registryContext += `\nFull registry data:\n${regContent.substring(0, 1500)}\n`;
         } catch { console.log('Registry extract failed'); }
         searchContext += registryContext;
-        console.log('Registry found:', countryInfo.registry, '| query:', registryQuery);
+        console.log('Registry found:', countryInfo.registry, '| domain:', websiteDomain);
       }
 
       // LinkedIn validation
@@ -306,7 +305,7 @@ his_identification: 850=Yes, 851=No`;
 
   // If healthcare type → always ICP = Yes, regardless of AI answer
   if (healthcareTypes.includes(enriched.icp_type))
-  enriched.icp = 64;
+    enriched.icp = 64;
 
   if (enriched.icp_type === 939) enriched.icp_ecosystem = 855;
   else if (healthcareTypes.includes(enriched.icp_type)) enriched.icp_ecosystem = 854;

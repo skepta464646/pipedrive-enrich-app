@@ -102,6 +102,14 @@ export default async function handler(req, res) {
     try {
       const countryInfo = getCountryRegistry(website, name);
 
+      // Build registry query — use domain if available (more reliable than org name)
+      const websiteDomain = website
+        ? website.replace(/https?:\/\/(www\.)?/, '').split('/')[0].trim()
+        : '';
+      const registryQuery = websiteDomain
+        ? `${websiteDomain} site:${countryInfo?.registry}`
+        : `"${name}" site:${countryInfo?.registry}`;
+
       const searchQueries = [
         fetch('https://api.tavily.com/search', {
           method: 'POST',
@@ -134,7 +142,7 @@ export default async function handler(req, res) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               api_key: TAVILY_KEY,
-              query: `"${name}" site:${countryInfo.registry}`,
+              query: registryQuery,
               search_depth: 'basic',
               max_results: 2,
               include_answer: false
@@ -172,7 +180,7 @@ export default async function handler(req, res) {
           if (regContent) registryContext += `\nFull registry data:\n${regContent.substring(0, 1500)}\n`;
         } catch { console.log('Registry extract failed'); }
         searchContext += registryContext;
-        console.log('Registry found:', countryInfo.registry);
+        console.log('Registry found:', countryInfo.registry, '| query:', registryQuery);
       }
 
       // LinkedIn validation
@@ -217,7 +225,7 @@ IMPORTANT:
 - License Agreement fields: fill ONLY from official registry or website sources in context. Leave "" if not found.
 - ceo_name: extract from registry (look for "Vadovas", "Director", "CEO", "President of the Management Board", "Prezes Zarządu")
 - vat: extract TAX ID / NIP / VAT number from registry
-- registration_number: extract KRS / National Court Register / REGON number from registry
+- registration_number: extract KRS / National Court Register number from registry (NOT REGON)
 - address: extract legal/registered address from registry
 - qualify_status: set based on contact info found (phone/email)
 - annual_revenue: use 2=1-10M USD, 3=10-100M, 4=100-1000M, 5=1-10B. Use 0 if below 1M USD or unknown.

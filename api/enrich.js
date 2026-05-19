@@ -46,7 +46,7 @@ export default async function handler(req, res) {
 
   // ─── Helper: detect country registry from website/name ───────────────────
   function getCountryRegistry(websiteUrl, companyName) {
-    const domain = websiteUrl?.toLowerCase() || '';
+    const domain = (websiteUrl?.toLowerCase() || '').replace(/https?:\/\/(www\.)?/, '');
     const nameLower = companyName?.toLowerCase() || '';
     if (domain.includes('.lt') || nameLower.includes(', uab') || nameLower.includes(', ab') || nameLower.includes(', vi') || nameLower.includes(', mb'))
       return { country: 'lt', registry: 'rekvizitai.lt' };
@@ -103,9 +103,9 @@ export default async function handler(req, res) {
     try {
       const countryInfo = getCountryRegistry(website, name);
 
-      const websiteDomain = website
-        ? website.replace(/https?:\/\/(www\.)?/, '').split('/')[0].trim()
-        : '';
+const websiteDomain = website
+  ? website.replace(/https?:\/\//, '').replace(/^www\./, '').split('/')[0].trim()
+  : '';
 
       const searchQueries = [
         fetch('https://api.tavily.com/search', {

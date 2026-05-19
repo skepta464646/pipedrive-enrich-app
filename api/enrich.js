@@ -104,6 +104,7 @@ if (liResult) {
     } catch (e) { console.error('Tavily error:', e.message); }
   }
   // ─── Step 2: AI enrichment ────────────────────────────────────────────────
+  searchContext = searchContext.slice(0, 2000);
   let enriched = {};
   try {
     const groqRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
@@ -111,7 +112,7 @@ if (liResult) {
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${GROQ_KEY}` },
       body: JSON.stringify({
         model: 'llama-3.3-70b-versatile',
-        max_tokens: 1200,
+        max_tokens: 600,
         messages: [{
           role: 'user',
           content: `You are a B2B healthcare CRM data specialist. Fill ALL fields you can determine from the information below.

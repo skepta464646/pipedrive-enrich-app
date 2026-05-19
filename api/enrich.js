@@ -283,13 +283,18 @@ his_identification: 850=Yes, 851=No`;
     const geminiData = await geminiRes.json();
     console.log('Gemini status:', geminiRes.status);
 
-    if (geminiRes.status === 401 || geminiRes.status === 403)
-      return res.status(200).json({ success: false, error: '❌ Gemini API key invalid. Update GEMINI_API_KEY in Vercel.', fields_filled: 0 });
-    if (geminiRes.status === 429)
-      return res.status(200).json({ success: false, error: '⏳ Gemini rate limit reached. Try again in a minute.', fields_filled: 0 });
-    if (!geminiRes.ok)
-      return res.status(200).json({ success: false, error: '❌ Gemini error ' + geminiRes.status + ': ' + (geminiData.error?.message || ''), fields_filled: 0 });
-
+if (geminiRes.status === 401 || geminiRes.status === 403)
+  return res.status(200).json({ success: false, error: '❌ Gemini API key invalid or expired. Check GEMINI_API_KEY in Vercel env vars.', fields_filled: 0 });
+if (geminiRes.status === 429) {
+  const retryAfter = geminiRes.headers.get('retry-after') || '60';
+  return res.status(200).json({ success: false, error: `⏳ Gemini quota exceeded. Daily/minute limit reached. Retry after ${retryAfter}s. Check quota at: console.cloud.google.com`, fields_filled: 0 });
+}
+if (geminiRes.status === 503)
+  return res.status(200).json({ success: false, error: '🔄 Gemini overloaded (503). High demand spike — try again in 1-2 minutes.', fields_filled: 0 });
+if (geminiRes.status === 500)
+  return res.status(200).json({ success: false, error: '💥 Gemini internal error (500). Try again shortly.', fields_filled: 0 });
+if (!geminiRes.ok)
+  return res.status(200).json({ success: false, error: `❌ Gemini error ${geminiRes.status}: ${geminiData.error?.message || 'Unknown error'}. Check console.cloud.google.com for quota/billing info.`, fields_filled: 0 });
     const content = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
     console.log('Gemini content:', content.substring(0, 300));
     enriched = JSON.parse(content.replace(/```json\n?|\n?```/g, '').trim());

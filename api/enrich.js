@@ -10,7 +10,7 @@ export default async function handler(req, res) {
   let { name, website } = req.body;
   if (!organizationId) return res.status(400).json({ error: 'Missing organizationId' });
 
-  const GROQ_KEY = process.env.GROQ_API_KEY;
+  const GEMINI_KEY = process.env.GEMINI_API_KEY;
   const PD_TOKEN = process.env.PIPEDRIVE_API_TOKEN;
   const PD_DOMAIN = process.env.PIPEDRIVE_DOMAIN;
   const TAVILY_KEY = process.env.TAVILY_API_KEY;
@@ -98,30 +98,19 @@ export default async function handler(req, res) {
     } catch (e) { console.error('Tavily error:', e.message); }
   }
 
-  // ─── Step 2: AI enrichment ────────────────────────────────────────────────
+  // ─── Step 2: AI enrichment with Gemini ───────────────────────────────────
   searchContext = searchContext.slice(0, 1500);
   let enriched = {};
   try {
-const groqRes = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}` },
-  body: JSON.stringify({
-    model: 'meta-llama/llama-3.1-8b-instruct:free',
-        max_tokens: 800,
-        messages: [
-          {
-            role: 'system',
-            content: 'You are a B2B healthcare CRM specialist. Return ONLY valid JSON, no markdown, no explanation. Use numeric IDs as specified.'
-          },
-          {
-            role: 'user',
-            content: `Enrich this company for CRM:
+    const prompt = `You are a B2B healthcare CRM specialist. Return ONLY valid JSON, no markdown, no explanation.
+
+Enrich this company:
 Name: ${name}
 Website: ${website || 'unknown'}
 Address: ${existing.address?.value || 'unknown'}
 ${searchContext ? `\nContext:\n${searchContext}` : ''}
 
-Return JSON with these exact fields and numeric IDs:
+Return JSON with these exact fields:
 {
   "industry": 11,
   "annual_revenue": 0,
@@ -159,16 +148,35 @@ qualify_status: 62=Has contact, 63=Has contact+email, 61=No contact, 57=To quali
 icp_ecosystem: 854=Healthcare, 855=HIS Software vendors
 his_identification: 850=Yes, 851=No
 
-Fill what you can determine. Use defaults (0, 66, 1016, etc.) for unknowns.`
-          }
-        ]
-      })
-    });
+Fill what you can determine. Use defaults (0, 66, 1016, etc.) for unknowns.`;
 
-    const groqData = await groqRes.json();
-    console.log('Groq status:', groqRes.status, JSON.stringify(groqData.error || ''));
-    const content = groqData.choices?.[0]?.message?.content || '{}';
-    console.log('Groq content:', content.substring(0, 200));
+    const geminiRes = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${GEMINI_KEY}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: { temperature: 0.1, maxOutputTokens: 800 }
+        })
+      }
+    );
+
+    const geminiData = await geminiRes.json();
+    console.log('Gemini status:', geminiRes.status);
+
+    if (geminiRes.status === 401 || geminiRes.status === 403) {
+      return res.status(200).json({ success: false, error: '❌ Gemini API key invalid. Update GEMINI_API_KEY in Vercel.', fields_filled: 0 });
+    }
+    if (geminiRes.status === 429) {
+      return res.status(200).json({ success: false, error: '⏳ Gemini rate limit reached. Try again in a minute.', fields_filled: 0 });
+    }
+    if (!geminiRes.ok) {
+      return res.status(200).json({ success: false, error: '❌ Gemini error ' + geminiRes.status + ': ' + (geminiData.error?.message || ''), fields_filled: 0 });
+    }
+
+    const content = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
+    console.log('Gemini content:', content.substring(0, 200));
     enriched = JSON.parse(content.replace(/```json\n?|\n?```/g, '').trim());
   } catch (e) {
     console.error('AI failed:', e.message);
@@ -204,7 +212,6 @@ Fill what you can determine. Use defaults (0, 66, 1016, etc.) for unknowns.`
   const finalLinkedin = await validateLinkedIn(foundLinkedinUrl);
 
   // ─── Step 5: Build payload — only empty fields ────────────────────────────
-  const cf = existing.custom_fields || {};
   const payload = {};
   const setIfEmpty = (key, val, ev) => { if (!isEmpty(val) && isEmpty(ev)) payload[key] = val; };
   const setCfIfEmpty = (hash, val, ev) => { if (!isEmpty(val) && isEmpty(ev)) payload[hash] = val; };

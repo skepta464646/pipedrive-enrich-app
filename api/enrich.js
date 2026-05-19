@@ -202,7 +202,7 @@ ${searchContext ? `\nContext (includes official registry data if available):\n${
 
 IMPORTANT:
 - License Agreement fields (phone, email, company_legal_name, address, vat, registration_number, ceo_name): fill ONLY from official registry or website sources found in context above. Leave "" if not found.
-- ceo_name: extract director/CEO/manager full name from registry data if present (look for "Vadovas", "Direktor", "Director", "CEO", "Manager" labels)
+- ceo_name: extract director/CEO/manager full name from registry data (look for "Vadovas", "Direktor", "Director", "CEO", "Manager", "President of the Management Board", "Prezes Zarządu" labels) - vat: extract TAX ID / NIP / VAT number from registry data - registration_number: extract KRS / National Court Register number from registry data   - address: extract legal address / registered address from registry data
 - qualify_status: set based on what contact info was found (phone/email in context)
 - annual_revenue: estimate from revenue data if found in registry (e.g. "424 602 €" → use 2 for 1-10M USD)
 

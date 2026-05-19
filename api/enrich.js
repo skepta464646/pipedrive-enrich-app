@@ -47,81 +47,50 @@ export default async function handler(req, res) {
   function getCountryRegistry(websiteUrl, companyName) {
     const domain = websiteUrl?.toLowerCase() || '';
     const nameLower = companyName?.toLowerCase() || '';
-
-    // Lithuanian indicators
-    if (domain.includes('.lt') || nameLower.includes(', uab') || nameLower.includes(', ab') || nameLower.includes(', vĮ') || nameLower.includes(', mb')) {
+    if (domain.includes('.lt') || nameLower.includes(', uab') || nameLower.includes(', ab') || nameLower.includes(', vi') || nameLower.includes(', mb'))
       return { country: 'lt', registry: 'rekvizitai.lt' };
-    }
-    // Polish indicators
-    if (domain.includes('.pl') || nameLower.includes(' sp. z o.o') || nameLower.includes(' s.a.') || nameLower.includes(' sp.k')) {
+    if (domain.includes('.pl') || nameLower.includes(' sp. z o.o') || nameLower.includes(' s.a.') || nameLower.includes(' sp.k'))
       return { country: 'pl', registry: 'aleo.com' };
-    }
-    // Swedish indicators
-    if (domain.includes('.se') || nameLower.includes(' ab') || nameLower.includes(' hb')) {
+    if (domain.includes('.se') || nameLower.includes(' ab ') || nameLower.endsWith(' ab'))
       return { country: 'se', registry: 'allabolag.se' };
-    }
-    // German indicators
-    if (domain.includes('.de') || nameLower.includes(' gmbh') || nameLower.includes(' ag')) {
+    if (domain.includes('.de') || nameLower.includes(' gmbh') || nameLower.includes(' ag '))
       return { country: 'de', registry: 'northdata.com' };
-    }
-    // Greek indicators
-    if (domain.includes('.gr')) {
+    if (domain.includes('.gr'))
       return { country: 'gr', registry: 'businessregistry.gr' };
-    }
-    // Portuguese indicators
-    if (domain.includes('.pt') || nameLower.includes(' lda') || nameLower.includes(', lda')) {
+    if (domain.includes('.pt') || nameLower.includes(' lda') || nameLower.includes(', lda'))
       return { country: 'pt', registry: 'racius.pt' };
-    }
-    // Finnish indicators
-    if (domain.includes('.fi') || nameLower.includes(' oy') || nameLower.includes(' oyj')) {
+    if (domain.includes('.fi') || nameLower.includes(' oy ') || nameLower.endsWith(' oy') || nameLower.includes(' oyj'))
       return { country: 'fi', registry: 'finder.fi' };
-    }
-    // Norwegian indicators
-    if (domain.includes('.no') || nameLower.includes(' as ') || nameLower.includes(' asa')) {
+    if (domain.includes('.no') || nameLower.includes(' as ') || nameLower.endsWith(' as') || nameLower.includes(' asa'))
       return { country: 'no', registry: 'proff.no' };
-    }
-    // Danish indicators
-    if (domain.includes('.dk') || nameLower.includes(' a/s') || nameLower.includes(' aps')) {
+    if (domain.includes('.dk') || nameLower.includes(' a/s') || nameLower.includes(' aps'))
       return { country: 'dk', registry: 'cvr.dk' };
-    }
-    // Dutch indicators
-    if (domain.includes('.nl') || nameLower.includes(' b.v.') || nameLower.includes(' n.v.')) {
+    if (domain.includes('.nl') || nameLower.includes(' b.v.') || nameLower.includes(' n.v.'))
       return { country: 'nl', registry: 'kvk.nl' };
-    }
-    // Czech indicators
-    if (domain.includes('.cz') || nameLower.includes(' s.r.o') || nameLower.includes(' a.s.')) {
+    if (domain.includes('.cz') || nameLower.includes(' s.r.o') || nameLower.includes(' a.s.'))
       return { country: 'cz', registry: 'rejstrik.penize.cz' };
-    }
-    // Hungarian indicators
-    if (domain.includes('.hu') || nameLower.includes(' kft') || nameLower.includes(' zrt')) {
+    if (domain.includes('.hu') || nameLower.includes(' kft') || nameLower.includes(' zrt'))
       return { country: 'hu', registry: 'e-cegjegyzek.hu' };
-    }
-    // Romanian indicators
-    if (domain.includes('.ro') || nameLower.includes(' srl') || nameLower.includes(' sa')) {
+    if (domain.includes('.ro') || nameLower.includes(' srl ') || nameLower.endsWith(' srl'))
       return { country: 'ro', registry: 'listafirme.ro' };
-    }
-    // Bulgarian indicators
-    if (domain.includes('.bg')) {
+    if (domain.includes('.bg'))
       return { country: 'bg', registry: 'papagal.bg' };
-    }
-    // Croatian indicators
-    if (domain.includes('.hr') || nameLower.includes(' d.o.o') || nameLower.includes(' d.d.')) {
+    if (domain.includes('.hr') || nameLower.includes(' d.o.o') || nameLower.includes(' d.d.'))
       return { country: 'hr', registry: 'fininfo.hr' };
-    }
-    // Estonian indicators
-    if (domain.includes('.ee') || nameLower.includes(' oü') || nameLower.includes(' as')) {
+    if (domain.includes('.ee') || nameLower.includes(' oü'))
       return { country: 'ee', registry: 'teatmik.ee' };
-    }
-    // Latvian indicators
-    if (domain.includes('.lv') || nameLower.includes(' sia') || nameLower.includes(' as')) {
+    if (domain.includes('.lv') || nameLower.includes(' sia ') || nameLower.endsWith(' sia'))
       return { country: 'lv', registry: 'lursoft.lv' };
-    }
-    // Turkish indicators
-    if (domain.includes('.com.tr') || domain.includes('.tr')) {
+    if (domain.includes('.com.tr') || domain.includes('.tr'))
       return { country: 'tr', registry: 'sirketbilgileri.com' };
-    }
-
     return null;
+  }
+
+  // ─── Helper: detect private ownership from legal form ────────────────────
+  function isPrivateLegalForm(companyName) {
+    const n = companyName?.toLowerCase() || '';
+    const privateForms = [', uab', ', mb', ' sp. z o.o', ' s.r.o', ' gmbh', ' b.v.', ', lda', ' kft', ' oü', ' sia', ' srl', ' d.o.o', ' aps', ' bv', ' sas', ' sarl'];
+    return privateForms.some(f => n.includes(f));
   }
 
   // ─── Step 1: Tavily search ────────────────────────────────────────────────
@@ -131,12 +100,9 @@ export default async function handler(req, res) {
 
   if (TAVILY_KEY && name) {
     try {
-      // Detect country registry
       const countryInfo = getCountryRegistry(website, name);
 
-      // Build search queries
       const searchQueries = [
-        // General search
         fetch('https://api.tavily.com/search', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -148,7 +114,6 @@ export default async function handler(req, res) {
             include_answer: true
           })
         }),
-        // LinkedIn search
         fetch('https://api.tavily.com/search', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -162,7 +127,6 @@ export default async function handler(req, res) {
         })
       ];
 
-      // Country registry search if detected
       if (countryInfo) {
         searchQueries.push(
           fetch('https://api.tavily.com/search', {
@@ -182,7 +146,6 @@ export default async function handler(req, res) {
       const responses = await Promise.all(searchQueries);
       const [generalData, linkedinData, registryData] = await Promise.all(responses.map(r => r.json()));
 
-      // General context
       if (generalData.answer) searchContext += `Summary: ${generalData.answer}\n\n`;
       if (generalData.results?.length > 0) {
         searchContext += 'Web results:\n';
@@ -191,7 +154,6 @@ export default async function handler(req, res) {
         });
       }
 
-      // Registry context
       if (registryData?.results?.length > 0) {
         registryContext += `\nOfficial registry (${countryInfo.registry}):\n`;
         registryData.results.forEach(r => {
@@ -201,7 +163,6 @@ export default async function handler(req, res) {
         console.log('Registry found:', countryInfo.registry);
       }
 
-      // LinkedIn validation
       const liResult = linkedinData.results?.find(r => r.url?.includes('linkedin.com/company/'));
       if (liResult) {
         const nameWords = name.toLowerCase().split(/\s+/).filter(w => w.length > 3);
@@ -240,11 +201,12 @@ Address: ${existing.address?.value || 'unknown'}
 ${searchContext ? `\nContext (includes official registry data if available):\n${searchContext}` : ''}
 
 IMPORTANT:
-- For License Agreement fields (phone, email, company_legal_name, address, vat, registration_number, ceo_name): fill ONLY from official registry or website sources in the context above
-- If registry data is present, extract company_legal_name, registration_number, vat, address, ceo_name from it
-- For qualify_status: check if phone or email was found in context
+- License Agreement fields (phone, email, company_legal_name, address, vat, registration_number, ceo_name): fill ONLY from official registry or website sources found in context above. Leave "" if not found.
+- ceo_name: extract director/CEO/manager full name from registry data if present (look for "Vadovas", "Direktor", "Director", "CEO", "Manager" labels)
+- qualify_status: set based on what contact info was found (phone/email in context)
+- annual_revenue: estimate from revenue data if found in registry (e.g. "424 602 €" → use 2 for 1-10M USD)
 
-Return JSON with these exact fields:
+Return JSON:
 {
   "industry": 11,
   "annual_revenue": 0,
@@ -298,15 +260,12 @@ his_identification: 850=Yes, 851=No`;
     const geminiData = await geminiRes.json();
     console.log('Gemini status:', geminiRes.status);
 
-    if (geminiRes.status === 401 || geminiRes.status === 403) {
+    if (geminiRes.status === 401 || geminiRes.status === 403)
       return res.status(200).json({ success: false, error: '❌ Gemini API key invalid. Update GEMINI_API_KEY in Vercel.', fields_filled: 0 });
-    }
-    if (geminiRes.status === 429) {
+    if (geminiRes.status === 429)
       return res.status(200).json({ success: false, error: '⏳ Gemini rate limit reached. Try again in a minute.', fields_filled: 0 });
-    }
-    if (!geminiRes.ok) {
+    if (!geminiRes.ok)
       return res.status(200).json({ success: false, error: '❌ Gemini error ' + geminiRes.status + ': ' + (geminiData.error?.message || ''), fields_filled: 0 });
-    }
 
     const content = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
     console.log('Gemini content:', content.substring(0, 300));
@@ -321,25 +280,24 @@ his_identification: 850=Yes, 851=No`;
   // ─── Step 3: Auto-corrections ─────────────────────────────────────────────
   const healthcareTypes = [1017,935,1018,520,932,937,936,1019,1020,1021,1022,1023,1024,934,931,1025,1026,1027,1029,1030];
 
-  // ICP auto-set
-  if (healthcareTypes.includes(enriched.icp_type) && (enriched.icp === 66 || enriched.icp === 0)) {
+  // ICP auto-set for healthcare
+  if (healthcareTypes.includes(enriched.icp_type) && (enriched.icp === 66 || enriched.icp === 0))
     enriched.icp = 64;
-  }
 
   // ICP Ecosystem auto-set
   if (enriched.icp_type === 939) enriched.icp_ecosystem = 855;
   else if (healthcareTypes.includes(enriched.icp_type)) enriched.icp_ecosystem = 854;
   else enriched.icp_ecosystem = null;
 
-  // Employees category from exact count
-  const exactCount = enriched.employee_count || existing.employee_count;
-  if (exactCount > 0 && isEmptyAI(enriched.employees_category)) {
-    enriched.employees_category = employeesToCategory(exactCount);
-  }
-  // Also if exact count known, fill category even if AI gave one (exact count is more reliable)
-  if (enriched.employee_count > 0) {
+  // Ownership auto-set from legal form
+  if (isPrivateLegalForm(name) && enriched.ownership === 1016)
+    enriched.ownership = 1014;
+
+  // Employees category from exact count (exact count overrides AI category)
+  if (enriched.employee_count > 0)
     enriched.employees_category = employeesToCategory(enriched.employee_count);
-  }
+  else if (existing.employee_count > 0 && isEmptyAI(enriched.employees_category))
+    enriched.employees_category = employeesToCategory(existing.employee_count);
 
   // ─── Step 4: Validate LinkedIn ────────────────────────────────────────────
   const INVALID_SLUGS = ['unavailable','login','authwall','404','null','undefined','company'];
@@ -365,15 +323,15 @@ his_identification: 850=Yes, 851=No`;
   const setCfIfEmpty = (hash, val, ev) => { if (!isEmptyAI(val) && isEmpty(ev)) payload[hash] = val; };
 
   setIfEmpty('industry', enriched.industry, existing.industry);
-  setIfEmpty('annual_revenue', enriched.annual_revenue > 1 ? enriched.annual_revenue : null, existing.annual_revenue);
+  // Annual revenue: fill if empty OR if existing is 0 (placeholder)
+  if (enriched.annual_revenue > 1 && (isEmpty(existing.annual_revenue) || existing.annual_revenue === 0))
+    payload.annual_revenue = enriched.annual_revenue;
   setIfEmpty('employee_count', enriched.employee_count > 0 ? enriched.employee_count : null, existing.employee_count);
   setIfEmpty('linkedin', finalLinkedin, existing.linkedin);
-  if (!isEmpty(enriched.phone) && isEmpty(existing.phone?.[0]?.value)) {
+  if (!isEmpty(enriched.phone) && isEmpty(existing.phone?.[0]?.value))
     payload.phone = [{ value: enriched.phone, primary: true, label: 'work' }];
-  }
-  if (!isEmpty(enriched.address) && isEmpty(existing.address?.value)) {
+  if (!isEmpty(enriched.address) && isEmpty(existing.address?.value))
     payload.address = enriched.address;
-  }
 
   setCfIfEmpty('0d5afcefbd6ada8781d38fe74873d4b308234a49', enriched.icp,               existing['0d5afcefbd6ada8781d38fe74873d4b308234a49']);
   setCfIfEmpty('5b6f71999f89a4ac00ed32f8bd49bc8480bf459d', enriched.ownership,          existing['5b6f71999f89a4ac00ed32f8bd49bc8480bf459d']);
@@ -421,7 +379,6 @@ his_identification: 850=Yes, 851=No`;
       const sources = ['Tavily web search', 'Gemini AI'];
       if (countryInfo) sources.push(`${countryInfo.registry} (official registry)`);
       if (foundLinkedinUrl) sources.push('LinkedIn');
-
       const noteContent = `🤖 AI Enrichment\n\n${enriched.company_overview}\n\n📊 Sources: ${sources.join(', ')}`;
       await fetch(`https://${PD_DOMAIN}.pipedrive.com/api/v1/notes?api_token=${PD_TOKEN}`, {
         method: 'POST',

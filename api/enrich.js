@@ -7,6 +7,7 @@ export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   const { organizationId } = req.body;
+  const debugMode = req.body.debug === true;
   let { name, website } = req.body;
   if (!organizationId) return res.status(400).json({ error: 'Missing organizationId' });
 
@@ -211,6 +212,15 @@ export default async function handler(req, res) {
   // ─── Step 2: AI enrichment with Gemini ───────────────────────────────────
   searchContext = searchContext.slice(0, 3000);
   let enriched = {};
+
+  const errorBase = {
+    fields_filled: 0,
+    tavily_used: !!searchContext,
+    registry_used: !!registryContext,
+    linkedin_found: !!foundLinkedinUrl,
+    ...(debugMode && { debug: { registry_context: registryContext.substring(0, 800), search_context: searchContext.substring(0, 500) } })
+  };
+
   try {
     const prompt = `You are a B2B healthcare CRM specialist. Return ONLY valid JSON, no markdown, no explanation.
 
@@ -283,24 +293,25 @@ his_identification: 850=Yes, 851=No`;
     const geminiData = await geminiRes.json();
     console.log('Gemini status:', geminiRes.status);
 
-if (geminiRes.status === 401 || geminiRes.status === 403)
-  return res.status(200).json({ success: false, error: '❌ Gemini API key invalid or expired. Check GEMINI_API_KEY in Vercel env vars.', fields_filled: 0 });
-if (geminiRes.status === 429) {
-  const retryAfter = geminiRes.headers.get('retry-after') || '60';
-  return res.status(200).json({ success: false, error: `⏳ Gemini quota exceeded. Daily/minute limit reached. Retry after ${retryAfter}s. Check quota at: console.cloud.google.com`, fields_filled: 0 });
-}
-if (geminiRes.status === 503)
-  return res.status(200).json({ success: false, error: '🔄 Gemini overloaded (503). High demand spike — try again in 1-2 minutes.', fields_filled: 0 });
-if (geminiRes.status === 500)
-  return res.status(200).json({ success: false, error: '💥 Gemini internal error (500). Try again shortly.', fields_filled: 0 });
-if (!geminiRes.ok)
-  return res.status(200).json({ success: false, error: `❌ Gemini error ${geminiRes.status}: ${geminiData.error?.message || 'Unknown error'}. Check console.cloud.google.com for quota/billing info.`, fields_filled: 0 });
+    if (geminiRes.status === 401 || geminiRes.status === 403)
+      return res.status(200).json({ success: false, error: '❌ Gemini API key invalid or expired. Check GEMINI_API_KEY in Vercel env vars.', ...errorBase });
+    if (geminiRes.status === 429) {
+      const retryAfter = geminiRes.headers.get('retry-after') || '60';
+      return res.status(200).json({ success: false, error: `⏳ Gemini quota exceeded. Daily/minute limit reached. Retry after ${retryAfter}s. Check: console.cloud.google.com`, ...errorBase });
+    }
+    if (geminiRes.status === 503)
+      return res.status(200).json({ success: false, error: '🔄 Gemini overloaded (503). High demand — try again in 1-2 minutes.', ...errorBase });
+    if (geminiRes.status === 500)
+      return res.status(200).json({ success: false, error: '💥 Gemini internal error (500). Try again shortly.', ...errorBase });
+    if (!geminiRes.ok)
+      return res.status(200).json({ success: false, error: `❌ Gemini error ${geminiRes.status}: ${geminiData.error?.message || 'Unknown'}. Check console.cloud.google.com`, ...errorBase });
+
     const content = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
     console.log('Gemini content:', content.substring(0, 300));
     enriched = JSON.parse(content.replace(/```json\n?|\n?```/g, '').trim());
   } catch (e) {
     console.error('AI failed:', e.message);
-    return res.status(500).json({ error: 'AI failed: ' + e.message });
+    return res.status(500).json({ error: 'AI failed: ' + e.message, ...errorBase });
   }
 
   console.log('AI response:', JSON.stringify(enriched));
@@ -308,7 +319,6 @@ if (!geminiRes.ok)
   // ─── Step 3: Auto-corrections ─────────────────────────────────────────────
   const healthcareTypes = [1017,935,1018,520,932,937,936,1019,1020,1021,1022,1023,1024,934,931,1025,1026,1027,1029,1030];
 
-  // If healthcare type → always ICP = Yes, regardless of AI answer
   if (healthcareTypes.includes(enriched.icp_type))
     enriched.icp = 64;
 
@@ -417,6 +427,14 @@ if (!geminiRes.ok)
     fields_filled: Object.keys(payload).length,
     tavily_used: !!searchContext,
     linkedin_found: !!finalLinkedin,
-    registry_used: !!registryContext
+    registry_used: !!registryContext,
+    ...(debugMode && {
+      debug: {
+        registry_context: registryContext.substring(0, 800),
+        search_context: searchContext.substring(0, 500),
+        ai_response: enriched,
+        payload_keys: Object.keys(payload)
+      }
+    })
   });
 }

@@ -169,6 +169,7 @@ Return ONLY valid JSON (no markdown):
 
   // ─── Step 3: Auto-corrections ─────────────────────────────────────────────
   // If healthcare ICP type → ICP should be Yes
+console.log('AI response:', JSON.stringify(enriched));
   const healthcareTypes = [1017,935,1018,520,932,937,936,1019,1020,1021,1022,1023,1024,934,931];
   if (healthcareTypes.includes(enriched.icp_type) && (enriched.icp === 66 || enriched.icp === 0)) {
     enriched.icp = 64;
@@ -236,7 +237,8 @@ Return ONLY valid JSON (no markdown):
   if (enriched.number_of_beds > 0 && isEmpty(cf['03ed00fa62b2687bb7ec4a2b6c3194cc828d81db'])) payload['03ed00fa62b2687bb7ec4a2b6c3194cc828d81db'] = enriched.number_of_beds;
   if (enriched.number_of_branches > 0 && isEmpty(cf['bdc6f4f7031fa45a45aa4cd4cd3014f66f9847cf'])) payload['bdc6f4f7031fa45a45aa4cd4cd3014f66f9847cf'] = enriched.number_of_branches;
   if (enriched.number_of_specialists > 0 && isEmpty(cf['598c7ea3d04ce28a52985dc15a7f74cb6ff977f3'])) payload['598c7ea3d04ce28a52985dc15a7f74cb6ff977f3'] = enriched.number_of_specialists;
-
+console.log('Payload keys:', Object.keys(payload));
+  console.log('Payload:', JSON.stringify(payload));
   // ─── Step 6: Update Pipedrive ─────────────────────────────────────────────
   if (Object.keys(payload).length > 0) {
     const pdRes = await fetch(

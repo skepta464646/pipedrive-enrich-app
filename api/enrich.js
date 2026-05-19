@@ -304,8 +304,9 @@ his_identification: 850=Yes, 851=No`;
   // ─── Step 3: Auto-corrections ─────────────────────────────────────────────
   const healthcareTypes = [1017,935,1018,520,932,937,936,1019,1020,1021,1022,1023,1024,934,931,1025,1026,1027,1029,1030];
 
-  if (healthcareTypes.includes(enriched.icp_type) && (enriched.icp === 66 || enriched.icp === 0))
-    enriched.icp = 64;
+  // If healthcare type → always ICP = Yes, regardless of AI answer
+  if (healthcareTypes.includes(enriched.icp_type))
+  enriched.icp = 64;
 
   if (enriched.icp_type === 939) enriched.icp_ecosystem = 855;
   else if (healthcareTypes.includes(enriched.icp_type)) enriched.icp_ecosystem = 854;

@@ -931,18 +931,8 @@ Return JSON:
   if (!enriched.ceo_name) emptyImportantFields.push('ceo_name');
   if (!enriched.address) emptyImportantFields.push('address');
 
-  let orgFieldHints = [];
-
-  if (debugMode) {
-    try {
-      const orgFields = await getPipedriveOrgFields();
-      orgFieldHints = orgFields
-        .filter((field) => /krs|vat|registration|regon|nip/i.test(field.name || ''))
-        .map((field) => ({ name: field.name, key: field.key, field_type: field.field_type }));
-      console.log('PIPEDRIVE ORG FIELD HINTS:', JSON.stringify(orgFieldHints, null, 2));
-    } catch (error) {
-      warn('ORG_FIELD_HINTS_FAILED', 'Could not fetch organization field hints.', { message: error.message });
-    }
+  if (debugMode && orgFieldHints.length > 0) {
+    console.log('PIPEDRIVE ORG FIELD HINTS:', JSON.stringify(orgFieldHints, null, 2));
   }
 
   let alert = null;

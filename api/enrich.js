@@ -546,7 +546,12 @@ export default async function handler(req, res) {
 
   try {
     const polishRules = countryInfo?.country === 'pl'
-      ? `\nPOLAND RULES:\n- KRS = registration_number. Exactly 10 digits.\n- NIP = vat. Exactly 10 digits; may appear as NIP or PL + 10 digits.\n- REGON is separate. Do NOT use REGON as registration_number.\n- Look for: KRS, Numer KRS, NIP, Numer NIP, REGON, Siedziba, Adres, Zarząd, Prezes Zarządu.\n`
+      ? `\nPOLAND RULES:\n- KRS = krs_number. Exactly 10 digits.
+- NIP = vat. Exactly 10 digits; may appear as NIP or PL + 10 digits.
+- REGON = registration_number. 9 or 14 digits.
+- Do NOT use KRS as registration_number. Do NOT use REGON as KRS.
+- Look for: KRS, Numer KRS, NIP, Numer NIP, REGON, Siedziba, Adres, Zarząd, Prezes Zarządu.
+`
       : '';
 
     const prompt = `You are a B2B healthcare CRM specialist. Return ONLY valid JSON, no markdown, no explanation.
@@ -568,7 +573,7 @@ IMPORTANT:
 - License Agreement fields: fill ONLY from official registry or website sources in context. Leave "" if not found.
 - ceo_name: extract from registry if available.
 - vat: extract TAX ID / NIP / VAT number from registry. For Poland use NIP.
-- registration_number: extract KRS / National Court Register number from registry. For Poland use KRS only, not REGON.
+- registration_number: for Poland extract REGON, not KRS. For other countries use the local registration/company number.
 - address: extract legal/registered address from registry.
 - qualify_status: use 724 when both email and phone found, 725 phone only, 63 email only, 62 contact exists, 57 otherwise.
 - annual_revenue: use 2=1-10M USD, 3=10-100M, 4=100-1000M, 5=1-10B. Use 0 if below 1M USD or unknown.
@@ -592,6 +597,7 @@ Return JSON:
   "address": "",
   "vat": "",
   "registration_number": "",
+  "krs_number": "",
   "phone": "",
   "email": "",
   "number_of_beds": 0,
@@ -662,13 +668,23 @@ Return JSON:
     );
   }
 
+  // Correct Polish mapping:
+  // NIP   -> VAT
+  // REGON -> Registration number
+  // KRS   -> KRS number
   if (countryInfo?.country === 'pl') {
-    if (deterministicIds.krs) enriched.registration_number = deterministicIds.krs;
+    if (deterministicIds.krs) enriched.krs_number = deterministicIds.krs;
     if (deterministicIds.nip) enriched.vat = deterministicIds.nip;
+    if (deterministicIds.regon) enriched.registration_number = deterministicIds.regon;
 
-    if (enriched.registration_number && deterministicIds.regon && String(enriched.registration_number) === String(deterministicIds.regon)) {
-      enriched.registration_number = deterministicIds.krs || '';
-      warn('POLISH_REGON_BLOCKED', 'AI tried to use REGON as registration_number. Blocked.', {
+    // Safety: never allow REGON and KRS mixup.
+    if (
+      enriched.krs_number &&
+      deterministicIds.regon &&
+      String(enriched.krs_number) === String(deterministicIds.regon)
+    ) {
+      enriched.krs_number = deterministicIds.krs || '';
+      warn('POLISH_REGON_BLOCKED', 'AI tried to use REGON as KRS number. Blocked.', {
         regon: deterministicIds.regon,
         krs: deterministicIds.krs
       });
@@ -701,6 +717,30 @@ Return JSON:
   }
 
   const finalLinkedin = await validateLinkedIn(foundLinkedinUrl);
+
+  // Auto-detect the Pipedrive custom field key for "KRS number" if env var is not set.
+  // This fixes the case where KRS is found but only saved into "Registration number".
+  let orgFieldHints = [];
+  if (!FIELD.krs_number || debugMode) {
+    try {
+      const orgFields = await getPipedriveOrgFields();
+      orgFieldHints = orgFields
+        .filter((field) => /krs|vat|registration|regon|nip/i.test(field.name || ''))
+        .map((field) => ({ name: field.name, key: field.key, field_type: field.field_type }));
+
+      const krsField = orgFields.find((field) => {
+        const fieldName = safeString(field.name).toLowerCase();
+        return fieldName === 'krs number' || fieldName === 'krs' || fieldName.includes('krs');
+      });
+
+      if (!FIELD.krs_number && krsField?.key) {
+        FIELD.krs_number = krsField.key;
+        console.log('AUTO-DETECTED KRS FIELD KEY:', FIELD.krs_number, krsField.name);
+      }
+    } catch (error) {
+      warn('KRS_FIELD_AUTODETECT_FAILED', 'Could not auto-detect KRS field key.', { message: error.message });
+    }
+  }
 
   const payload = {};
   const payloadDecisions = [];
@@ -782,9 +822,24 @@ Return JSON:
   setCfIfEmpty(FIELD.his_software_name, enriched.his_software_name, existing[FIELD.his_software_name], 'HIS/RIS/LIS/PACS software');
   setCfIfEmpty(FIELD.ceo_name, enriched.ceo_name, existing[FIELD.ceo_name], 'CEO for contract');
   setCfIfEmpty(FIELD.address, enriched.address, existing[FIELD.address], 'Address for license agreement');
-  setCfIfEmpty(FIELD.vat, enriched.vat, existing[FIELD.vat], 'VAT');
-  setCfIfEmpty(FIELD.registration_number, enriched.registration_number, existing[FIELD.registration_number], 'Registration number');
-  setCfIfEmpty(FIELD.krs_number, enriched.registration_number || deterministicIds.krs, existing[FIELD.krs_number], 'KRS number');
+  // VAT = Polish NIP
+  setCfIfEmpty(FIELD.vat, enriched.vat || deterministicIds.nip, existing[FIELD.vat], 'VAT');
+
+  // Registration number = Polish REGON
+  setCfIfEmpty(
+    FIELD.registration_number,
+    enriched.registration_number || deterministicIds.regon,
+    existing[FIELD.registration_number],
+    'Registration number'
+  );
+
+  // KRS number = Polish KRS
+  setCfIfEmpty(
+    FIELD.krs_number,
+    enriched.krs_number || deterministicIds.krs,
+    existing[FIELD.krs_number],
+    'KRS number'
+  );
 
   if (Number(enriched.number_of_beds) > 0) setCfIfEmpty(FIELD.number_of_beds, enriched.number_of_beds, existing[FIELD.number_of_beds], 'Number of beds');
   if (Number(enriched.number_of_branches) > 0) setCfIfEmpty(FIELD.number_of_branches, enriched.number_of_branches, existing[FIELD.number_of_branches], 'Number of branches');

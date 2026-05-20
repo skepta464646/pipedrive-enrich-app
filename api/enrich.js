@@ -742,6 +742,30 @@ Return JSON:
     }
   }
 
+  // Migration/fallback for old bad Polish mapping:
+  // Older code saved KRS into Registration number. Polish KRS is 10 digits.
+  // REGON is 9 or 14 digits. If Registration number has 10 digits and KRS is empty,
+  // treat existing Registration number as KRS and copy it into KRS number.
+  if (countryInfo?.country === 'pl') {
+    const existingRegistration = safeString(existing[FIELD.registration_number]).replace(/[^0-9]/g, '');
+    const existingKrs = FIELD.krs_number
+      ? safeString(existing[FIELD.krs_number]).replace(/[^0-9]/g, '')
+      : '';
+
+    if (
+      !deterministicIds.krs &&
+      !enriched.krs_number &&
+      !existingKrs &&
+      /^[0-9]{10}$/.test(existingRegistration)
+    ) {
+      enriched.krs_number = existingRegistration;
+      warn('POLISH_KRS_MIGRATED_FROM_REGISTRATION', 'Existing Registration number looked like KRS, so copied it into KRS number.', {
+        existing_registration_number: existingRegistration,
+        krs_field_key: FIELD.krs_number || '(missing)'
+      });
+    }
+  }
+
   const payload = {};
   const payloadDecisions = [];
 
@@ -870,19 +894,64 @@ Return JSON:
       pipedriveUpdateData = await pdRes.json().catch(() => ({}));
 
       if (!pdRes.ok || !pipedriveUpdateData.success) {
-        return fail(
-          200,
-          'PIPEDRIVE_UPDATE_FAILED',
-          `Pipedrive update failed. HTTP ${pdRes.status}.`,
-          'Check field keys, option IDs, field types, and token permissions. See debug.payload_decisions.',
-          buildBase({
-            fields_attempted: Object.keys(payload),
-            payload_decisions: payloadDecisions,
-            pipedrive_response: debugMode ? pipedriveUpdateData : undefined,
-            payload: debugMode ? payload : undefined,
-            ai_response: debugMode ? enriched : undefined
-          })
-        );
+        // If only the auto-detected KRS field is causing rejection, retry once without it.
+        // This prevents the Pipedrive button from showing a full error while we confirm the exact KRS field key.
+        if (FIELD.krs_number && Object.prototype.hasOwnProperty.call(payload, FIELD.krs_number)) {
+          const retryPayload = { ...payload };
+          delete retryPayload[FIELD.krs_number];
+
+          console.warn('PIPEDRIVE UPDATE FAILED WITH KRS FIELD. RETRYING WITHOUT KRS.', {
+            krs_field_key: FIELD.krs_number,
+            first_response: pipedriveUpdateData
+          });
+
+          const retryRes = await fetch(`https://${PD_DOMAIN}.pipedrive.com/api/v1/organizations/${organizationId}?api_token=${PD_TOKEN}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(retryPayload)
+          });
+
+          const retryData = await retryRes.json().catch(() => ({}));
+
+          if (retryRes.ok && retryData.success) {
+            warn('KRS_FIELD_UPDATE_SKIPPED', 'Pipedrive rejected the KRS field, so update was retried without KRS.', {
+              krs_field_key: FIELD.krs_number,
+              first_response: debugMode ? pipedriveUpdateData : undefined
+            });
+            pipedriveUpdateData = retryData;
+          } else {
+            return fail(
+              200,
+              'PIPEDRIVE_UPDATE_FAILED_AFTER_RETRY',
+              `Pipedrive update failed even after removing KRS field. HTTP ${retryRes.status}.`,
+              'Check field keys, option IDs, field types, and token permissions. See debug.payload_decisions and debug.pipedrive_response.',
+              buildBase({
+                fields_attempted: Object.keys(payload),
+                retry_fields_attempted: Object.keys(retryPayload),
+                payload_decisions: payloadDecisions,
+                pipedrive_response: debugMode ? retryData : undefined,
+                first_pipedrive_response: debugMode ? pipedriveUpdateData : undefined,
+                payload: debugMode ? payload : undefined,
+                retry_payload: debugMode ? retryPayload : undefined,
+                ai_response: debugMode ? enriched : undefined
+              })
+            );
+          }
+        } else {
+          return fail(
+            200,
+            'PIPEDRIVE_UPDATE_FAILED',
+            `Pipedrive update failed. HTTP ${pdRes.status}.`,
+            'Check field keys, option IDs, field types, and token permissions. See debug.payload_decisions.',
+            buildBase({
+              fields_attempted: Object.keys(payload),
+              payload_decisions: payloadDecisions,
+              pipedrive_response: debugMode ? pipedriveUpdateData : undefined,
+              payload: debugMode ? payload : undefined,
+              ai_response: debugMode ? enriched : undefined
+            })
+          );
+        }
       }
     } catch (error) {
       return fail(
@@ -937,11 +1006,11 @@ Return JSON:
 
   let alert = null;
 
-  if (countryInfo?.country === 'pl' && (!enriched.vat || !enriched.registration_number)) {
+  if (countryInfo?.country === 'pl' && (!enriched.vat || !enriched.registration_number || !enriched.krs_number)) {
     alert = {
       scenario: 'POLISH_IDS_NOT_FULLY_FOUND',
-      message: 'Polish enrichment finished, but KRS/NIP was not fully found.',
-      solution: 'Check debug.registry_context and deterministic_ids. If official page data exists but extract is empty, Tavily cannot read the dynamic official page.'
+      message: 'Polish enrichment finished, but NIP/REGON/KRS was not fully found from the current search.',
+      solution: 'Check debug.deterministic_ids and debug.payload_decisions. If deterministic IDs are empty, Tavily/OpenAI did not see registry IDs in this run. If old code saved KRS in Registration number, this version migrates it to KRS number when the value is exactly 10 digits.'
     };
   } else if (!FIELD.krs_number && countryInfo?.country === 'pl') {
     alert = {

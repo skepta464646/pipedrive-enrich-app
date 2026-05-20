@@ -37,50 +37,268 @@ export default async function handler(req, res) {
     phone: '99c1cffae1ed208819f80c4c3a1b545d461082bb',
     email: 'b83bf5f8378a2275b475db4dc64b1101ea48836a',
     company_legal_name: 'b4c2b2ef4b92a130ec7de91f4d17622d5640431e',
-    his_software_name: '115cfff712c6caf184d7c155838a9dace81e8821',
-    ceo_name: '4107458f7b06285686f1968fbefa9ea50902cf07',
-    address: '6d64ec2abf8d9a01a64c0cbf2f962281845b1c85',
-    vat: 'aa9502b251dece8bf94fd779579676f711c7c17d',
-    registration_number: '0d6adf6f65d52b61826d207cc40357265b6d6402',
+    // IMPORTANT: your Pipedrive UI has a separate "KRS number" field.
+    // Add its API key in Vercel as PD_FIELD_KRS_NUMBER after checking /organizationFields.
+    krs_number: process.env.PD_FIELD_KRS_NUMBER || '',
+    // IMPORTANT: Pipedrive has a separate "KRS number" field in your UI.
+    // Add its API key in Vercel as PD_FIELD_KRS_NUMBER after checking /organizationFields.
+    krs_number: process.env.PD_FIELD_KRS_NUMBER || '',
+    // IMPORTANT: your Pipedrive UI has a separate "KRS number" field.
+    // Add its API key in Vercel as PD_FIELD_KRS_NUMBER after checking /organizationFields.
+    krs_number: process.env.PD_FIELD_KRS_NUMBER || '',
+    // IMPORTANT: Pipedrive has a separate "KRS number" field in your UI.
+    // Add its API key in Vercel as PD_FIELD_KRS_NUMBER after checking /organizationFields.
+    krs_number: process.env.PD_FIELD_KRS_NUMBER || '',
+    // IMPORTANT: your Pipedrive UI has a separate "KRS number" field.
+    // Add its API key in Vercel as PD_FIELD_KRS_NUMBER after checking /organizationFields.
+    krs_number: process.env.PD_FIELD_KRS_NUMBER || '',
+    // IMPORTANT: Pipedrive has a separate "KRS number" field in your UI.
+    // Add its API key in Vercel as PD_FIELD_KRS_NUMBER after checking /organizationFields.
+    krs_number: process.env.PD_FIELD_KRS_NUMBER || '',
+    // IMPORTANT: your Pipedrive UI has a separate "KRS number" field.
+    // Add its API key in Vercel as PD_FIELD_KRS_NUMBER after checking /organizationFields.
+    krs_number: process.e  function isEmpty(value) {
+    if (value === null || value === undefined) return true;
+    if (typeof value === 'string') {
+      const cleaned = value.trim();
+      // Pipedrive UI displays empty fields as "-". If a previous automation really saved "-",
+      // treat it as empty so enrichment can repair it.
+      if (cleaned === '' || cleaned === '-') return true;
+    }
+    return false;
+  }ni  function isEmptyAI(valarate "KRS number" field.
+    // Add its API key in Vercel as PD_FIELD_KRS_NUMBER after checking /organizationFields.
+    krs_number: process.e  function isEmpty(value) {
+    if (value === null || value === undefined) return true;
+    if (typeof value === 'string') {
+      const cleaned = value.trim();
+      // Pipedrive UI displays empty fields as "-". If a previous automation really saved "-",
+      // treat it as empty so enrichment can repair it.
+      if (cleaned === '' || cleaned === '-') return true;
+    }
+    return false;
+  }ni  function isEmptyAI(valarate "KRS number" field.
+    // Add its API key in Vercel as PD_FIELD_KRS_NUMBER after checking /organizationFields.
+    krs_number: process.e  function isEmpty(value) {
+    if (value === null || value === undefined) return true;
+    if (typeof value === 'string') {
+      const cleaned = value.trim();
+      // Pipedrive UI displays empty fields as "-". If a previous automation really saved "-",
+      // treat it as empty so enrichment can repair it.
+      if (cleaned === '' || cleaned === '-') return true;
+    }
+    return false;
+  }ni  function isEmptyAI(valarate "KRS number" field.
+    // Add its API key in Vercel as PD_FIELD_KRS_NUMBER after checking /organizationFields.
+    krs_number: process.e  function isEmpty(value) {
+    if (value === null || value === undefined) return true;
+    if (typeof value === 'string') {
+      const cleaned = value.trim();
+      // Pipedrive UI displays empty fields as "-". If a previous automation really saved "-",
+      // treat it as empty so enrichment can repair it.
+      if (cleaned === '' || cleaned === '-') return true;
+    }
+    return false;
+  }ni  function isEmptyAI(valarate "KRS number" field.
+    // Add its API key in Vercel as PD_FIELD_KRS_NUMBER after checking /organizationFields.
+    krs_number: process.e  function isEmpty(value) {
+    if (value === null || value === undefined) return true;
+    if (typeof value === 'string') {
+      const cleaned = value.trim();
+      // Pipedrive UI displays empty fields          'ems.ms.gov.pl',
+          // Fallback public KRS mirrors. These are not official, but often extract better than dynamic gov pages.
+          'rejestr.io',
+          'imsig.pl'
+        ]eally saved "-",
+      // treat it as empty so enrichment can repair it.
+      if (cleaned === '' || cleaned === '-') return true;
+    }
+    return false;
+  }ni  function isEmptyAI(valarate "KRS number" field.
+    // Add its API key in Vercel as PD_FIELD_KRS_NUMBER after checking /organizationFields.
+    krs_number: process.e  function isEmpty(value) {
+    if (value === null || value === undefined) return true;
+    if (typeof value === 'string') {
+      const cleaned = value.trim();
+      // Pipedrive UI displays empty fields          'ems.ms.gov.pl',
+          // Fallback public KRS mirrors. These are not official, but often extract better than dynamic gov pages.
+          'rejestr.io',
+          'imsig.pl'
+        ]eally saved "-",
+      // treat it as empty so enrichment can repair it.
+      if (cleaned === '' || cleaned === '-') return true;
+    }
+    return false;
+  }ni  function isEmptyAI(valarate "KRS number" field.
+    // Add its API key in Vercel as PD_FIELD_KRS_NUMBER after checking /organizationFields.
+    krs_number: process.e  function isEmpty(value) {
+    if (value === null || value === undefined) return true;
+    if (typeof value === 'string') {
+      const cleaned = value.trim();
+      // Pipedrive UI displays empty fields          'ems.ms.gov.pl',
+          // Fallback public KRS mirrors. These are not official, but often extract better than dynamic gov pages.
+          'rejestr.io',
+          'imsig.pl'
+        ]eally saved "-",
+      // treat it as empty so enrichment can repair it.
+      if (cleaned === '' || cleaned === '-') return true;
+    }
+    return false;
+  }ni  function isEmptyAI(valarate "KRS number" field.
+    // Add its API key in Vercel as PD_FIELD_KRS_NUMBER after checking /organizationFields.
+    krs_number: process.e  function isEmpty(value) {
+    if (value === null || value === undefined) return true;
+    if (typeof value === 'string') {
+      const cleaned = value.trim();
+      // Pipedrive UI displays empty fields          'ems.ms.gov.pl',
+          // Fallback public KRS mirrors. These are not official, but often extract better than dynamic gov pages.
+          'rejestr.io',
+          'imsig.pl'
+        ]eally saved "-",
+      // treat it as empty so enrichment can repair it.
+      if (cleaned === '' || cleaned === '-') return true;
+    }
+    return false;
+  }ni  function isEmptyAI(valarate "KRS number" field.
+    // Add its API key in Vercel as PD_FIELD_KRS_NUMBER after checking /organizationFields.
+    krs_number: process.e  function isEmpty(value) {
+    if (value === null || value === undefined) return true;
+    if (typeof value === 'string') {
+      const cleaned = value.trim();
+      // Pipedrive UI displays empty fields          'ems.ms.gov.pl',
+          // Fallback public KRS mirrors. These are not official, but often extract better than dynamic gov pages.
+          'rejestr.io',
+          'imsig.pl'
+        ]eally saved "-",
+      // treat it as empty so enrichment can repair it.
+      if (cleaned === '' || cleaned === '-') return true;
+    }
+    return false;
+  }ni  function isEmptyAI(valarate "KRS number" field.
+    // Add its API key in Vercel as PD_FIELD_KRS_NUMBER after checking /organizationFields.
+    krs_number: process.e  function isEmpty(value) {
+    if (value === null || value === undefined) return true;
+    if (typeof value === 'string') {
+      const cleaned = value.trim();
+      // Pipedrive UI displays empty fields          'ems.ms.gov.pl',
+          // Fallback public KRS mirrors. These are not official, but often extract better than dynamic gov pages.
+          'rejestr.io',
+          'imsig.pl'
+        ]eally saved "-",
+      // treat it as empty so enrichment can repair it.
+      if (cleaned === '' || cleaned === '-') return true;
+    }
+    return false;
+  }ni  function isEmptyAI(valarate "KRS number" field.
+    // Add its API key in Vercel as PD_FIELD_KRS_NUMBER after checking /organizationFields.
+    krs_number: process.e  function isEmpty(value) {
+    if (value === null || value === undefined) return true;
+    if (typeof value === 'string') {
+      const cleaned = value.trim();
+      // Pipedrive UI displays empty fields          'ems.ms.gov.pl',
+          // Fallback public KRS mirrors. These are not official, but often extract better than dynamic gov pages.
+          'rejestr.io',
+          'imsig.pl'
+        ]eally saved "-",
+      // treat it as empty so enrichment can repair it.
+      if (cleaned === '' || cleaned === '-') return true;
+    }
+    return false;
+  }ni  function isEmptyAI(valarate "KRS number" field.
+    // Add its API key in Vercel as PD_FIELD_KRS_NUMBER after checking /organizationFields.
+    krs_number: process.e  function isEmpty(value) {
+    if (value === null || value === undefined) return true;
+    if (typeof value === 'string') {
+      const cleaned = value.trim();
+      // Pipedrive UI displays empty fields          'ems.ms.gov.pl',
+          // Fallback public KRS mirrors. These are not official, but often extract better than dynamic gov pages.
+          'rejestr.io',
+          'imsig.pl'
+        ]eally saved "-",
+      // treat it as empty so enrichment can repair it.
+      if (cleaned === '' || cleaned === '-') return true;
+    }
+    return false;
+  }ni  function isEmptyAI(valarate "KRS number" field.
+    // Add its API key in Vercel as PD_FIELD_KRS_NUMBER after checking /organizationFields.
+    krs_number: process.e  function isEmpty(value) {
+    if (value === null || value === undefined) return true;
+    if (typeof value === 'string') {
+      const cleaned = value.trim();
+      // Pipedrive UI displays empty fields          'ems.ms.gov.pl',
+          // Fallback public KRS mirrors. These are not official, but often extract better than dynamic gov pages.
+          'rejestr.io',
+          'imsig.pl'
+        ]eally saved "-",
+      // treat it as empty so enrichment can repair it.
+      if (cleaned === '' || cleaned === '-') return true;
+    }
+    return false;
+  }ni  function isEmptyAI(valRS number" field in your UI.
+    // Add its API key in Vercel as PD_FIELD_KRS_NUMBER after checking /organizationFields.
+    krs_number: proces  function isEmpty(value) {
+    if (value === null || value === undefined) return true;
+    if (typeof value === 'string') {
+      const cleaned = value.trim();
+      // Pipedrive UI displays empty fields          'ems.ms.gov.pl',
+          // Fallback public KRS mirrors. These are not official, but often extract better than dynamic gov pages.
+          'rejestr.io',
+          'imsig.pl'
+        ]eally saved "-",
+      // treat it as empty so enrichment can repair it.
+      if (cleaned === '' || cleaned === '-') return true;
+    }
+    return false;
+  }bf  function isEmptyAI(val6adf6f65d52b61826d207cc40357265b6d6402',
     number_of_beds: '03ed00fa62b2687bb7ec4a2b6c3194cc828d81db',
-    number_of_branches: 'bdc6f4f7031fa45a45aa4cd4cd3014f66f9847cf',
-    number_of_specialists: '598c7ea3d04ce28a52985dc15a7f74cb6ff977f3'
-  };
-
-  const runtimeWarnings = [];
-
-  function fail(status, scenario, error, solution, extra = {}) {
-    return res.status(status).json({
-      success: false,
-      scenario,
-      error,
-      solution,
+    number_of_branches: 'bdc6f4f7031fa  function isEmpty(value) {
+    if (value === null || value === undefined) return true;
+    if (typeof value === 'string') {
+      const cleaned = value.trim();
+      // Pipedrive UI displays empty fields          'ems.ms.gov.pl',
+          // Fallback public KRS mirrors. These are not official, but often extract better than dynamic gov pages.
+          'rejestr.io',
+          'imsig.pl'
+        ]eally saved "-",
+      // treat it as empty so enrichment can repair it.
+      if (cleaned === '' || cleaned === '-') return true;
+    }
+    return false;
+  }lu  function isEmptyAI(valsolution,
       runtime_ms: Date.now() - startedAt,
       ...extra
     });
   }
 
   function logWarn(code, message, extra = {}) {
-    console.warn(`[${code}] ${message}`, extra);
-    runtimeWarnings.push({ code, message, ...extra });
-  }
-
-  function safeString(value) {
-    if (value === null || value === undefined) return '';
-    return String(value).trim();
-  }
-
-  function isEmpty(value) {
+    console.war  function isEmpty(value) {
     if (value === null || value === undefined) return true;
-    if (typeof value === 'string' && value.trim() === '') return true;
+    if (typeof value === 'string') {
+      const cleaned = value.trim();
+      // Pipedrive UI displays empty fields          'ems.ms.gov.pl',
+          // Fallback public KRS mirrors. These are not official, but often extract better than dynamic gov pages.
+          'rejestr.io',
+          'imsig.pl'
+        ]eally saved "-",
+      // treat it as empty so enrichment can repair it.
+      if (cleaned === '' || cleaned === '-') return true;
+    }
+    return false;
+  }';  function isEmptyAI(valreturn true;
+    if (typeof value === 'string') {
+      const cleaned = value.trim();
+      // Pipedrive UI displays empty fields as "-". If a previous automation really saved "-",
+      // treat it as empty so enrichment can repair it.
+      if (cleaned === '' || cleaned === '-') return true;
+    }
     return false;
   }
 
-  function isEmptyAI(value) {
-    return value === null || value === undefined || value === '' || value === 0;
-  }
-
-  function stripDiacritics(value) {
+  function isEmptyAI(va          'ems.ms.gov.pl',
+          // Fallback public KRS mirrors. These are not official, but often extract better than dynamic gov pages.
+          'rejestr.io',
+          'imsig.pl'
+        ]) {
     return safeString(value)
       .normalize('NFD')
       .replace(/[\u0300-\u036f]/g, '');
@@ -103,8 +321,11 @@ export default async function handler(req, res) {
 
   function employeesToCategory(count) {
     const n = Number(count);
-    if (!n || n <= 0) return 0;
-    if (n <= 10) return 49;
+    if (!n || n <=           'ems.ms.gov.pl',
+          // Fallback public KRS mirrors. These are not official, but often extract better than dynamic gov pages.
+          'rejestr.io',
+          'imsig.pl'
+        ]n 49;
     if (n <= 50) return 50;
     if (n <= 200) return 51;
     if (n <= 500) return 52;
@@ -122,8 +343,11 @@ export default async function handler(req, res) {
     if (
       domain.includes('.lt') ||
       nameLower.includes(', uab') ||
-      nameLower.includes(', ab') ||
-      nameLower.includes(', vi') ||
+      nameLowe          'ems.ms.gov.pl',
+          // Fallback public KRS mirrors. These are not official, but often extract better than dynamic gov pages.
+          'rejestr.io',
+          'imsig.pl'
+        ]er.includes(', vi') ||
       nameLower.includes(', mb')
     ) {
       return {
@@ -144,14 +368,20 @@ export default async function handler(req, res) {
     ) {
       return {
         country: 'pl',
-        label: 'Poland',
-        // Official Polish sources first. biznes.gov.pl usually exposes CEIDG / public business data.
+        label: 'P          'ems.ms.gov.pl',
+          // Fallback public KRS mirrors. These are not official, but often extract better than dynamic gov pages.
+          'rejestr.io',
+          'imsig.pl'
+        ]sources first. biznes.gov.pl usually exposes CEIDG / public business data.
         // wyszukiwarka-krs.ms.gov.pl is official KRS search, but Tavily sometimes extracts it poorly due dynamic pages.
         registries: [
           'biznes.gov.pl',
           'wyszukiwarka-krs.ms.gov.pl',
           'ekrs.ms.gov.pl',
-          'ems.ms.gov.pl'
+          'ems.ms.gov.pl',
+          // Fallback public KRS mirrors. These are not official, but often extract better than dynamic gov pages.
+          'rejestr.io',
+          'imsig.pl'
         ]
       };
     }
@@ -726,279 +956,4 @@ his_identification: 850=Yes, 851=No`;
       );
     }
 
-    if (aiRes.status === 500 || aiRes.status === 503) {
-      return fail(
-        200,
-        'OPENAI_TEMPORARY_ERROR',
-        `OpenAI temporary error ${aiRes.status}.`,
-        'Try again shortly. If repeated, check OpenAI status page and Vercel logs.',
-        errorBase
-      );
-    }
-
-    if (!aiRes.ok) {
-      return fail(
-        200,
-        'OPENAI_UNKNOWN_ERROR',
-        `OpenAI error ${aiRes.status}: ${aiData.error?.message || 'Unknown'}`,
-        'Check platform.openai.com logs/usage, OPENAI_API_KEY, OPENAI_MODEL, and Vercel logs.',
-        errorBase
-      );
-    }
-
-    const content = aiData.choices?.[0]?.message?.content || '{}';
-    enriched = JSON.parse(content.replace(/```json\n?|\n?```/g, '').trim());
-  } catch (error) {
-    return fail(
-      200,
-      'AI_PARSE_OR_VERCEL_RUNTIME_ERROR',
-      `AI failed: ${error.message}`,
-      'Most likely: OpenAI returned invalid JSON, Vercel runtime problem, timeout, or unsupported model response. Enable debug=true and check Vercel logs.',
-      errorBase
-    );
-  }
-
-  // Step 3: Deterministic overrides and auto-corrections.
-  if (countryInfo?.country === 'pl') {
-    if (deterministicIds.krs) enriched.registration_number = deterministicIds.krs;
-    if (deterministicIds.nip) enriched.vat = deterministicIds.nip;
-
-    // Safety: never allow REGON to overwrite Polish KRS registration_number.
-    if (enriched.registration_number && deterministicIds.regon && String(enriched.registration_number) === String(deterministicIds.regon)) {
-      enriched.registration_number = deterministicIds.krs || '';
-      logWarn('POLISH_REGON_BLOCKED', 'AI tried to use REGON as registration_number. Blocked.', {
-        regon: deterministicIds.regon,
-        krs: deterministicIds.krs
-      });
-    }
-  }
-
-  const healthcareTypes = [
-    1017, 935, 1018, 520, 932, 937, 936, 1019, 1020, 1021, 1022, 1023, 1024, 934,
-    931, 1025, 1026, 1027, 1029, 1030
-  ];
-
-  if (healthcareTypes.includes(enriched.icp_type)) enriched.icp = 64;
-
-  if (enriched.icp_type === 939) enriched.icp_ecosystem = 855;
-  else if (healthcareTypes.includes(enriched.icp_type)) enriched.icp_ecosystem = 854;
-  else enriched.icp_ecosystem = null;
-
-  if (isPrivateLegalForm(name) && enriched.ownership === 1016) enriched.ownership = 1014;
-
-  if (Number(enriched.employee_count) > 0) {
-    enriched.employees_category = employeesToCategory(enriched.employee_count);
-  } else if (Number(existing.employee_count) > 0 && isEmptyAI(enriched.employees_category)) {
-    enriched.employees_category = employeesToCategory(existing.employee_count);
-  }
-
-  // Step 4: Validate LinkedIn.
-  const INVALID_SLUGS = ['unavailable', 'login', 'authwall', '404', 'null', 'undefined', 'company'];
-
-  async function validateLinkedIn(url) {
-    if (!url) return '';
-    const clean = safeString(url).split('?')[0].replace(/\/$/, '');
-    if (!clean.includes('linkedin.com/company/')) return '';
-    const slug = clean.split('linkedin.com/company/')[1]?.split('/')[0];
-    if (!slug || INVALID_SLUGS.includes(slug.toLowerCase())) return '';
-    const finalUrl = `https://www.linkedin.com/company/${slug}/`;
-
-    try {
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 5000);
-      const response = await fetch(finalUrl, {
-        method: 'HEAD',
-        headers: { 'User-Agent': 'Mozilla/5.0' },
-        signal: controller.signal,
-        redirect: 'follow'
-      });
-      clearTimeout(timeout);
-      if (response.status === 404 || response.url?.includes('unavailable')) return '';
-      return finalUrl;
-    } catch {
-      return finalUrl;
-    }
-  }
-
-  const finalLinkedin = await validateLinkedIn(foundLinkedinUrl);
-
-  // Step 5: Build Pipedrive payload. Fill only empty fields.
-  const payload = {};
-  const setIfEmpty = (key, value, existingValue) => {
-    if (!isEmptyAI(value) && isEmpty(existingValue)) payload[key] = value;
-  };
-  const setCfIfEmpty = (hash, value, existingValue) => {
-    if (!isEmptyAI(value) && isEmpty(existingValue)) payload[hash] = value;
-  };
-
-  setIfEmpty('industry', enriched.industry, existing.industry);
-
-  if (Number(enriched.annual_revenue) > 1 && (isEmpty(existing.annual_revenue) || Number(existing.annual_revenue) === 0)) {
-    payload.annual_revenue = enriched.annual_revenue;
-  }
-
-  setIfEmpty('employee_count', Number(enriched.employee_count) > 0 ? enriched.employee_count : null, existing.employee_count);
-  setIfEmpty('linkedin', finalLinkedin, existing.linkedin);
-
-  if (!isEmpty(enriched.phone) && isEmpty(existing.phone?.[0]?.value)) {
-    payload.phone = [{ value: enriched.phone, primary: true, label: 'work' }];
-  }
-
-  if (!isEmpty(enriched.address) && isEmpty(existing.address?.value)) {
-    payload.address = enriched.address;
-  }
-
-  setCfIfEmpty(FIELD.icp, enriched.icp, existing[FIELD.icp]);
-  setCfIfEmpty(FIELD.ownership, enriched.ownership, existing[FIELD.ownership]);
-  setCfIfEmpty(FIELD.icp_type, enriched.icp_type, existing[FIELD.icp_type]);
-  setCfIfEmpty(FIELD.qualify_status, enriched.qualify_status, existing[FIELD.qualify_status]);
-  setCfIfEmpty(FIELD.employees_category, enriched.employees_category, existing[FIELD.employees_category]);
-  setCfIfEmpty(FIELD.org_source, enriched.org_source, existing[FIELD.org_source]);
-  setCfIfEmpty(FIELD.icp_ecosystem, enriched.icp_ecosystem, existing[FIELD.icp_ecosystem]);
-  setCfIfEmpty(FIELD.his_identification, enriched.his_identification, existing[FIELD.his_identification]);
-  setCfIfEmpty(FIELD.linkedin, finalLinkedin, existing[FIELD.linkedin]);
-  setCfIfEmpty(FIELD.website, website || '', existing[FIELD.website]);
-  setCfIfEmpty(FIELD.phone, enriched.phone, existing[FIELD.phone]);
-  setCfIfEmpty(FIELD.email, enriched.email, existing[FIELD.email]);
-  setCfIfEmpty(FIELD.company_legal_name, enriched.company_legal_name, existing[FIELD.company_legal_name]);
-  setCfIfEmpty(FIELD.his_software_name, enriched.his_software_name, existing[FIELD.his_software_name]);
-  setCfIfEmpty(FIELD.ceo_name, enriched.ceo_name, existing[FIELD.ceo_name]);
-  setCfIfEmpty(FIELD.address, enriched.address, existing[FIELD.address]);
-  setCfIfEmpty(FIELD.vat, enriched.vat, existing[FIELD.vat]);
-  setCfIfEmpty(FIELD.registration_number, enriched.registration_number, existing[FIELD.registration_number]);
-
-  if (Number(enriched.number_of_beds) > 0 && isEmpty(existing[FIELD.number_of_beds])) {
-    payload[FIELD.number_of_beds] = enriched.number_of_beds;
-  }
-  if (Number(enriched.number_of_branches) > 0 && isEmpty(existing[FIELD.number_of_branches])) {
-    payload[FIELD.number_of_branches] = enriched.number_of_branches;
-  }
-  if (Number(enriched.number_of_specialists) > 0 && isEmpty(existing[FIELD.number_of_specialists])) {
-    payload[FIELD.number_of_specialists] = enriched.number_of_specialists;
-  }
-
-  console.log('Payload keys:', Object.keys(payload));
-
-  // Step 6: Update Pipedrive.
-  let pipedriveUpdateSuccess = true;
-  let pipedriveUpdateData = null;
-
-  if (Object.keys(payload).length > 0) {
-    try {
-      const pdRes = await fetch(
-        `https://${PD_DOMAIN}.pipedrive.com/api/v1/organizations/${organizationId}?api_token=${PD_TOKEN}`,
-        {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
-        }
-      );
-      pipedriveUpdateData = await pdRes.json().catch(() => ({}));
-
-      if (!pdRes.ok || !pipedriveUpdateData.success) {
-        pipedriveUpdateSuccess = false;
-        return fail(
-          200,
-          'PIPEDRIVE_UPDATE_FAILED',
-          `Pipedrive update failed. HTTP ${pdRes.status}.`,
-          'Check field hashes, option IDs, Pipedrive token permissions, and whether any field type rejects the provided value.',
-          buildErrorBase({
-            fields_attempted: Object.keys(payload),
-            pipedrive_response: debugMode ? pipedriveUpdateData : undefined,
-            ai_response: debugMode ? enriched : undefined,
-            payload: debugMode ? payload : undefined
-          })
-        );
-      }
-    } catch (error) {
-      return fail(
-        200,
-        'PIPEDRIVE_UPDATE_NETWORK_OR_VERCEL_ERROR',
-        `Pipedrive update request failed: ${error.message}`,
-        'Most likely: Vercel network issue, Pipedrive timeout, wrong domain, or invalid token. Check Vercel function logs.',
-        buildErrorBase({ fields_attempted: Object.keys(payload) })
-      );
-    }
-  }
-
-  // Step 7: Add AI note with sources. Do not block success if notes fail.
-  let noteAdded = false;
-  if (enriched.company_overview) {
-    try {
-      const notesRes = await fetch(`https://${PD_DOMAIN}.pipedrive.com/api/v1/notes?api_token=${PD_TOKEN}&org_id=${organizationId}&limit=10`);
-      const notesData = await notesRes.json().catch(() => ({}));
-      const hasAiNote = notesData.data?.some((note) => note.content?.includes('🤖 AI Enrichment'));
-
-      if (!hasAiNote) {
-        const sources = ['Tavily web search', process.env.OPENAI_MODEL || 'OpenAI gpt-4o-mini'];
-        if (countryInfo?.registries?.length) sources.push(`${countryInfo.registries.join(', ')} registry search`);
-        if (foundLinkedinUrl) sources.push('LinkedIn');
-        if (deterministicIds.krs || deterministicIds.nip || deterministicIds.regon) {
-          sources.push('deterministic KRS/NIP/REGON regex extraction');
-        }
-
-        const noteContent = `🤖 AI Enrichment\n\n${enriched.company_overview}\n\n📊 Sources: ${sources.join(', ')}`;
-        const createNoteRes = await fetch(`https://${PD_DOMAIN}.pipedrive.com/api/v1/notes?api_token=${PD_TOKEN}`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ content: noteContent, org_id: organizationId })
-        });
-        const createNoteData = await createNoteRes.json().catch(() => ({}));
-        noteAdded = !!createNoteData.success;
-        if (!noteAdded) {
-          logWarn('PIPEDRIVE_NOTE_FAILED', 'AI note creation failed.', { response: debugMode ? createNoteData : undefined });
-        }
-      }
-    } catch (error) {
-      logWarn('PIPEDRIVE_NOTE_RUNTIME_ERROR', 'AI note step failed.', { message: error.message });
-    }
-  }
-
-  const emptyImportantFields = [];
-  if (!enriched.vat) emptyImportantFields.push('vat');
-  if (!enriched.registration_number) emptyImportantFields.push('registration_number');
-  if (!enriched.ceo_name) emptyImportantFields.push('ceo_name');
-  if (!enriched.address) emptyImportantFields.push('address');
-
-  let alert = null;
-  if (countryInfo?.country === 'pl' && (!enriched.vat || !enriched.registration_number)) {
-    alert = {
-      scenario: 'POLISH_IDS_NOT_FULLY_FOUND',
-      message: 'Polish registry enrichment finished, but KRS/NIP was not fully found.',
-      solution: 'Check debug.registry_context. If official page has data but extract is empty, Tavily cannot read the dynamic page. Use biznes.gov.pl result, add another official static source, or create a direct parser/API path for KRS.'
-    };
-  } else if (Object.keys(payload).length === 0) {
-    alert = {
-      scenario: 'NOTHING_TO_UPDATE',
-      message: 'Enrichment ran, but no empty Pipedrive fields could be filled.',
-      solution: 'Fields may already be filled, AI found no confident data, or Pipedrive existing values are not technically empty.'
-    };
-  }
-
-  return res.status(200).json({
-    success: true,
-    fields_filled: Object.keys(payload).length,
-    fields_attempted: Object.keys(payload),
-    tavily_used: !!searchContext,
-    registry_used: !!registryContext,
-    registry_urls: registryUrls,
-    linkedin_found: !!finalLinkedin,
-    deterministic_ids: deterministicIds,
-    empty_important_fields: emptyImportantFields,
-    alert,
-    warnings: runtimeWarnings,
-    note_added: noteAdded,
-    pipedrive_update_success: pipedriveUpdateSuccess,
-    runtime_ms: Date.now() - startedAt,
-    ...(debugMode && {
-      debug: {
-        country_info: countryInfo,
-        registry_context: registryContext.substring(0, 3000),
-        search_context: searchContext.substring(0, 2000),
-        ai_response: enriched,
-        payload,
-        pipedrive_update_response: pipedriveUpdateData
-      }
-    })
-  });
-}
+    if (

@@ -4,11 +4,12 @@ export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
   if (req.method === 'OPTIONS') return res.status(200).end();
+
   if (req.method !== 'POST') {
     return res.status(405).json({
       success: false,
-      error: 'Method not allowed. This endpoint accepts POST only.',
       scenario: 'REQUEST_METHOD_ERROR',
+      error: 'Method not allowed. This endpoint accepts POST only.',
       solution: 'Call this endpoint with POST from Pipedrive/Vercel.'
     });
   }
@@ -37,275 +38,58 @@ export default async function handler(req, res) {
     phone: '99c1cffae1ed208819f80c4c3a1b545d461082bb',
     email: 'b83bf5f8378a2275b475db4dc64b1101ea48836a',
     company_legal_name: 'b4c2b2ef4b92a130ec7de91f4d17622d5640431e',
-    // IMPORTANT: your Pipedrive UI has a separate "KRS number" field.
-    // Add its API key in Vercel as PD_FIELD_KRS_NUMBER after checking /organizationFields.
+    his_software_name: '115cfff712c6caf184d7c155838a9dace81e8821',
+    ceo_name: '4107458f7b06285686f1968fbefa9ea50902cf07',
+    address: '6d64ec2abf8d9a01a64c0cbf2f962281845b1c85',
+    vat: 'aa9502b251dece8bf94fd779579676f711c7c17d',
+    registration_number: '0d6adf6f65d52b61826d207cc40357265b6d6402',
+    // Add this env var only if Pipedrive has a separate custom field for KRS number.
     krs_number: process.env.PD_FIELD_KRS_NUMBER || '',
-    // IMPORTANT: Pipedrive has a separate "KRS number" field in your UI.
-    // Add its API key in Vercel as PD_FIELD_KRS_NUMBER after checking /organizationFields.
-    krs_number: process.env.PD_FIELD_KRS_NUMBER || '',
-    // IMPORTANT: your Pipedrive UI has a separate "KRS number" field.
-    // Add its API key in Vercel as PD_FIELD_KRS_NUMBER after checking /organizationFields.
-    krs_number: process.env.PD_FIELD_KRS_NUMBER || '',
-    // IMPORTANT: Pipedrive has a separate "KRS number" field in your UI.
-    // Add its API key in Vercel as PD_FIELD_KRS_NUMBER after checking /organizationFields.
-    krs_number: process.env.PD_FIELD_KRS_NUMBER || '',
-    // IMPORTANT: your Pipedrive UI has a separate "KRS number" field.
-    // Add its API key in Vercel as PD_FIELD_KRS_NUMBER after checking /organizationFields.
-    krs_number: process.env.PD_FIELD_KRS_NUMBER || '',
-    // IMPORTANT: Pipedrive has a separate "KRS number" field in your UI.
-    // Add its API key in Vercel as PD_FIELD_KRS_NUMBER after checking /organizationFields.
-    krs_number: process.env.PD_FIELD_KRS_NUMBER || '',
-    // IMPORTANT: your Pipedrive UI has a separate "KRS number" field.
-    // Add its API key in Vercel as PD_FIELD_KRS_NUMBER after checking /organizationFields.
-    krs_number: process.e  function isEmpty(value) {
-    if (value === null || value === undefined) return true;
-    if (typeof value === 'string') {
-      const cleaned = value.trim();
-      // Pipedrive UI displays empty fields as "-". If a previous automation really saved "-",
-      // treat it as empty so enrichment can repair it.
-      if (cleaned === '' || cleaned === '-') return true;
-    }
-    return false;
-  }ni  function isEmptyAI(valarate "KRS number" field.
-    // Add its API key in Vercel as PD_FIELD_KRS_NUMBER after checking /organizationFields.
-    krs_number: process.e  function isEmpty(value) {
-    if (value === null || value === undefined) return true;
-    if (typeof value === 'string') {
-      const cleaned = value.trim();
-      // Pipedrive UI displays empty fields as "-". If a previous automation really saved "-",
-      // treat it as empty so enrichment can repair it.
-      if (cleaned === '' || cleaned === '-') return true;
-    }
-    return false;
-  }ni  function isEmptyAI(valarate "KRS number" field.
-    // Add its API key in Vercel as PD_FIELD_KRS_NUMBER after checking /organizationFields.
-    krs_number: process.e  function isEmpty(value) {
-    if (value === null || value === undefined) return true;
-    if (typeof value === 'string') {
-      const cleaned = value.trim();
-      // Pipedrive UI displays empty fields as "-". If a previous automation really saved "-",
-      // treat it as empty so enrichment can repair it.
-      if (cleaned === '' || cleaned === '-') return true;
-    }
-    return false;
-  }ni  function isEmptyAI(valarate "KRS number" field.
-    // Add its API key in Vercel as PD_FIELD_KRS_NUMBER after checking /organizationFields.
-    krs_number: process.e  function isEmpty(value) {
-    if (value === null || value === undefined) return true;
-    if (typeof value === 'string') {
-      const cleaned = value.trim();
-      // Pipedrive UI displays empty fields as "-". If a previous automation really saved "-",
-      // treat it as empty so enrichment can repair it.
-      if (cleaned === '' || cleaned === '-') return true;
-    }
-    return false;
-  }ni  function isEmptyAI(valarate "KRS number" field.
-    // Add its API key in Vercel as PD_FIELD_KRS_NUMBER after checking /organizationFields.
-    krs_number: process.e  function isEmpty(value) {
-    if (value === null || value === undefined) return true;
-    if (typeof value === 'string') {
-      const cleaned = value.trim();
-      // Pipedrive UI displays empty fields          'ems.ms.gov.pl',
-          // Fallback public KRS mirrors. These are not official, but often extract better than dynamic gov pages.
-          'rejestr.io',
-          'imsig.pl'
-        ]eally saved "-",
-      // treat it as empty so enrichment can repair it.
-      if (cleaned === '' || cleaned === '-') return true;
-    }
-    return false;
-  }ni  function isEmptyAI(valarate "KRS number" field.
-    // Add its API key in Vercel as PD_FIELD_KRS_NUMBER after checking /organizationFields.
-    krs_number: process.e  function isEmpty(value) {
-    if (value === null || value === undefined) return true;
-    if (typeof value === 'string') {
-      const cleaned = value.trim();
-      // Pipedrive UI displays empty fields          'ems.ms.gov.pl',
-          // Fallback public KRS mirrors. These are not official, but often extract better than dynamic gov pages.
-          'rejestr.io',
-          'imsig.pl'
-        ]eally saved "-",
-      // treat it as empty so enrichment can repair it.
-      if (cleaned === '' || cleaned === '-') return true;
-    }
-    return false;
-  }ni  function isEmptyAI(valarate "KRS number" field.
-    // Add its API key in Vercel as PD_FIELD_KRS_NUMBER after checking /organizationFields.
-    krs_number: process.e  function isEmpty(value) {
-    if (value === null || value === undefined) return true;
-    if (typeof value === 'string') {
-      const cleaned = value.trim();
-      // Pipedrive UI displays empty fields          'ems.ms.gov.pl',
-          // Fallback public KRS mirrors. These are not official, but often extract better than dynamic gov pages.
-          'rejestr.io',
-          'imsig.pl'
-        ]eally saved "-",
-      // treat it as empty so enrichment can repair it.
-      if (cleaned === '' || cleaned === '-') return true;
-    }
-    return false;
-  }ni  function isEmptyAI(valarate "KRS number" field.
-    // Add its API key in Vercel as PD_FIELD_KRS_NUMBER after checking /organizationFields.
-    krs_number: process.e  function isEmpty(value) {
-    if (value === null || value === undefined) return true;
-    if (typeof value === 'string') {
-      const cleaned = value.trim();
-      // Pipedrive UI displays empty fields          'ems.ms.gov.pl',
-          // Fallback public KRS mirrors. These are not official, but often extract better than dynamic gov pages.
-          'rejestr.io',
-          'imsig.pl'
-        ]eally saved "-",
-      // treat it as empty so enrichment can repair it.
-      if (cleaned === '' || cleaned === '-') return true;
-    }
-    return false;
-  }ni  function isEmptyAI(valarate "KRS number" field.
-    // Add its API key in Vercel as PD_FIELD_KRS_NUMBER after checking /organizationFields.
-    krs_number: process.e  function isEmpty(value) {
-    if (value === null || value === undefined) return true;
-    if (typeof value === 'string') {
-      const cleaned = value.trim();
-      // Pipedrive UI displays empty fields          'ems.ms.gov.pl',
-          // Fallback public KRS mirrors. These are not official, but often extract better than dynamic gov pages.
-          'rejestr.io',
-          'imsig.pl'
-        ]eally saved "-",
-      // treat it as empty so enrichment can repair it.
-      if (cleaned === '' || cleaned === '-') return true;
-    }
-    return false;
-  }ni  function isEmptyAI(valarate "KRS number" field.
-    // Add its API key in Vercel as PD_FIELD_KRS_NUMBER after checking /organizationFields.
-    krs_number: process.e  function isEmpty(value) {
-    if (value === null || value === undefined) return true;
-    if (typeof value === 'string') {
-      const cleaned = value.trim();
-      // Pipedrive UI displays empty fields          'ems.ms.gov.pl',
-          // Fallback public KRS mirrors. These are not official, but often extract better than dynamic gov pages.
-          'rejestr.io',
-          'imsig.pl'
-        ]eally saved "-",
-      // treat it as empty so enrichment can repair it.
-      if (cleaned === '' || cleaned === '-') return true;
-    }
-    return false;
-  }ni  function isEmptyAI(valarate "KRS number" field.
-    // Add its API key in Vercel as PD_FIELD_KRS_NUMBER after checking /organizationFields.
-    krs_number: process.e  function isEmpty(value) {
-    if (value === null || value === undefined) return true;
-    if (typeof value === 'string') {
-      const cleaned = value.trim();
-      // Pipedrive UI displays empty fields          'ems.ms.gov.pl',
-          // Fallback public KRS mirrors. These are not official, but often extract better than dynamic gov pages.
-          'rejestr.io',
-          'imsig.pl'
-        ]eally saved "-",
-      // treat it as empty so enrichment can repair it.
-      if (cleaned === '' || cleaned === '-') return true;
-    }
-    return false;
-  }ni  function isEmptyAI(valarate "KRS number" field.
-    // Add its API key in Vercel as PD_FIELD_KRS_NUMBER after checking /organizationFields.
-    krs_number: process.e  function isEmpty(value) {
-    if (value === null || value === undefined) return true;
-    if (typeof value === 'string') {
-      const cleaned = value.trim();
-      // Pipedrive UI displays empty fields          'ems.ms.gov.pl',
-          // Fallback public KRS mirrors. These are not official, but often extract better than dynamic gov pages.
-          'rejestr.io',
-          'imsig.pl'
-        ]eally saved "-",
-      // treat it as empty so enrichment can repair it.
-      if (cleaned === '' || cleaned === '-') return true;
-    }
-    return false;
-  }ni  function isEmptyAI(valarate "KRS number" field.
-    // Add its API key in Vercel as PD_FIELD_KRS_NUMBER after checking /organizationFields.
-    krs_number: process.e  function isEmpty(value) {
-    if (value === null || value === undefined) return true;
-    if (typeof value === 'string') {
-      const cleaned = value.trim();
-      // Pipedrive UI displays empty fields          'ems.ms.gov.pl',
-          // Fallback public KRS mirrors. These are not official, but often extract better than dynamic gov pages.
-          'rejestr.io',
-          'imsig.pl'
-        ]eally saved "-",
-      // treat it as empty so enrichment can repair it.
-      if (cleaned === '' || cleaned === '-') return true;
-    }
-    return false;
-  }ni  function isEmptyAI(valRS number" field in your UI.
-    // Add its API key in Vercel as PD_FIELD_KRS_NUMBER after checking /organizationFields.
-    krs_number: proces  function isEmpty(value) {
-    if (value === null || value === undefined) return true;
-    if (typeof value === 'string') {
-      const cleaned = value.trim();
-      // Pipedrive UI displays empty fields          'ems.ms.gov.pl',
-          // Fallback public KRS mirrors. These are not official, but often extract better than dynamic gov pages.
-          'rejestr.io',
-          'imsig.pl'
-        ]eally saved "-",
-      // treat it as empty so enrichment can repair it.
-      if (cleaned === '' || cleaned === '-') return true;
-    }
-    return false;
-  }bf  function isEmptyAI(val6adf6f65d52b61826d207cc40357265b6d6402',
     number_of_beds: '03ed00fa62b2687bb7ec4a2b6c3194cc828d81db',
-    number_of_branches: 'bdc6f4f7031fa  function isEmpty(value) {
-    if (value === null || value === undefined) return true;
-    if (typeof value === 'string') {
-      const cleaned = value.trim();
-      // Pipedrive UI displays empty fields          'ems.ms.gov.pl',
-          // Fallback public KRS mirrors. These are not official, but often extract better than dynamic gov pages.
-          'rejestr.io',
-          'imsig.pl'
-        ]eally saved "-",
-      // treat it as empty so enrichment can repair it.
-      if (cleaned === '' || cleaned === '-') return true;
-    }
-    return false;
-  }lu  function isEmptyAI(valsolution,
+    number_of_branches: 'bdc6f4f7031fa45a45aa4cd4cd3014f66f9847cf',
+    number_of_specialists: '598c7ea3d04ce28a52985dc15a7f74cb6ff977f3'
+  };
+
+  const warnings = [];
+
+  function warn(code, message, extra = {}) {
+    console.warn(`[${code}] ${message}`, extra);
+    warnings.push({ code, message, ...extra });
+  }
+
+  function fail(status, scenario, error, solution, extra = {}) {
+    return res.status(status).json({
+      success: false,
+      scenario,
+      error,
+      solution,
       runtime_ms: Date.now() - startedAt,
+      warnings,
       ...extra
     });
   }
 
-  function logWarn(code, message, extra = {}) {
-    console.war  function isEmpty(value) {
+  function safeString(value) {
+    if (value === null || value === undefined) return '';
+    return String(value).trim();
+  }
+
+  function isEmpty(value) {
     if (value === null || value === undefined) return true;
     if (typeof value === 'string') {
       const cleaned = value.trim();
-      // Pipedrive UI displays empty fields          'ems.ms.gov.pl',
-          // Fallback public KRS mirrors. These are not official, but often extract better than dynamic gov pages.
-          'rejestr.io',
-          'imsig.pl'
-        ]eally saved "-",
-      // treat it as empty so enrichment can repair it.
-      if (cleaned === '' || cleaned === '-') return true;
+      return cleaned === '' || cleaned === '-';
     }
     return false;
-  }';  function isEmptyAI(valreturn true;
+  }
+
+  function isEmptyAI(value) {
+    if (value === null || value === undefined || value === 0) return true;
     if (typeof value === 'string') {
       const cleaned = value.trim();
-      // Pipedrive UI displays empty fields as "-". If a previous automation really saved "-",
-      // treat it as empty so enrichment can repair it.
-      if (cleaned === '' || cleaned === '-') return true;
+      return cleaned === '' || cleaned === '-';
     }
     return false;
-  }
-
-  function isEmptyAI(va          'ems.ms.gov.pl',
-          // Fallback public KRS mirrors. These are not official, but often extract better than dynamic gov pages.
-          'rejestr.io',
-          'imsig.pl'
-        ]) {
-    return safeString(value)
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '');
-  }
-
-  function normalizeSpaces(value) {
-    return safeString(value).replace(/\s+/g, ' ').trim();
   }
 
   function normalizeWebsiteDomain(url) {
@@ -319,13 +103,16 @@ export default async function handler(req, res) {
       .toLowerCase();
   }
 
+  function stripDiacritics(value) {
+    return safeString(value)
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '');
+  }
+
   function employeesToCategory(count) {
     const n = Number(count);
-    if (!n || n <=           'ems.ms.gov.pl',
-          // Fallback public KRS mirrors. These are not official, but often extract better than dynamic gov pages.
-          'rejestr.io',
-          'imsig.pl'
-        ]n 49;
+    if (!n || n <= 0) return 0;
+    if (n <= 10) return 49;
     if (n <= 50) return 50;
     if (n <= 200) return 51;
     if (n <= 500) return 52;
@@ -341,23 +128,6 @@ export default async function handler(req, res) {
     const nameLower = stripDiacritics(rawName).toLowerCase();
 
     if (
-      domain.includes('.lt') ||
-      nameLower.includes(', uab') ||
-      nameLowe          'ems.ms.gov.pl',
-          // Fallback public KRS mirrors. These are not official, but often extract better than dynamic gov pages.
-          'rejestr.io',
-          'imsig.pl'
-        ]er.includes(', vi') ||
-      nameLower.includes(', mb')
-    ) {
-      return {
-        country: 'lt',
-        label: 'Lithuania',
-        registries: ['rekvizitai.lt']
-      };
-    }
-
-    if (
       domain.includes('.pl') ||
       nameLower.includes(' sp. z o.o') ||
       nameLower.includes(' sp z oo') ||
@@ -368,33 +138,28 @@ export default async function handler(req, res) {
     ) {
       return {
         country: 'pl',
-        label: 'P          'ems.ms.gov.pl',
-          // Fallback public KRS mirrors. These are not official, but often extract better than dynamic gov pages.
-          'rejestr.io',
-          'imsig.pl'
-        ]sources first. biznes.gov.pl usually exposes CEIDG / public business data.
-        // wyszukiwarka-krs.ms.gov.pl is official KRS search, but Tavily sometimes extracts it poorly due dynamic pages.
+        label: 'Poland',
         registries: [
           'biznes.gov.pl',
           'wyszukiwarka-krs.ms.gov.pl',
           'ekrs.ms.gov.pl',
           'ems.ms.gov.pl',
-          // Fallback public KRS mirrors. These are not official, but often extract better than dynamic gov pages.
           'rejestr.io',
           'imsig.pl'
         ]
       };
     }
 
+    if (domain.includes('.lt') || nameLower.includes(', uab') || nameLower.includes(', ab') || nameLower.includes(', mb')) {
+      return { country: 'lt', label: 'Lithuania', registries: ['rekvizitai.lt'] };
+    }
     if (domain.includes('.se') || nameLower.includes(' ab ') || nameLower.endsWith(' ab')) {
       return { country: 'se', label: 'Sweden', registries: ['allabolag.se'] };
     }
     if (domain.includes('.de') || nameLower.includes(' gmbh') || nameLower.includes(' ag ')) {
       return { country: 'de', label: 'Germany', registries: ['northdata.com'] };
     }
-    if (domain.includes('.gr')) {
-      return { country: 'gr', label: 'Greece', registries: ['businessregistry.gr'] };
-    }
+    if (domain.includes('.gr')) return { country: 'gr', label: 'Greece', registries: ['businessregistry.gr'] };
     if (domain.includes('.pt') || nameLower.includes(' lda') || nameLower.includes(', lda')) {
       return { country: 'pt', label: 'Portugal', registries: ['racius.pt'] };
     }
@@ -419,9 +184,7 @@ export default async function handler(req, res) {
     if (domain.includes('.ro') || nameLower.includes(' srl ') || nameLower.endsWith(' srl')) {
       return { country: 'ro', label: 'Romania', registries: ['listafirme.ro'] };
     }
-    if (domain.includes('.bg')) {
-      return { country: 'bg', label: 'Bulgaria', registries: ['papagal.bg'] };
-    }
+    if (domain.includes('.bg')) return { country: 'bg', label: 'Bulgaria', registries: ['papagal.bg'] };
     if (domain.includes('.hr') || nameLower.includes(' d.o.o') || nameLower.includes(' d.d.')) {
       return { country: 'hr', label: 'Croatia', registries: ['fininfo.hr'] };
     }
@@ -445,57 +208,32 @@ export default async function handler(req, res) {
       ' kft', ' oü', ' ou', ' sia', ' srl', ' d.o.o', ' aps', ' bv', ' sas', ' sarl',
       'spolka z ograniczona'
     ];
-    return privateForms.some((f) => n.includes(f));
+    return privateForms.some((form) => n.includes(form));
   }
 
   function extractPolishIds(text) {
-    const original = safeString(text);
-    const compact = original.replace(/[\u00A0\t\r\n]+/g, ' ').replace(/\s+/g, ' ');
+    const compact = safeString(text).replace(/[\u00A0\t\r\n]+/g, ' ').replace(/\s+/g, ' ');
     const noSpacesAroundDigits = compact.replace(/(?<=\d)[\s-]+(?=\d)/g, '');
     const result = { krs: '', nip: '', regon: '' };
 
-    const krsPatterns = [
-      /\bKRS\s*[:#-]?\s*(\d{10})\b/i,
-      /\bNumer\s+KRS\s*[:#-]?\s*(\d{10})\b/i,
-      /\bNr\s+KRS\s*[:#-]?\s*(\d{10})\b/i
-    ];
+    const krsMatch =
+      noSpacesAroundDigits.match(/\bKRS\s*[:#-]?\s*(\d{10})\b/i) ||
+      noSpacesAroundDigits.match(/\bNumer\s+KRS\s*[:#-]?\s*(\d{10})\b/i) ||
+      noSpacesAroundDigits.match(/\bNr\s+KRS\s*[:#-]?\s*(\d{10})\b/i);
 
-    const nipPatterns = [
-      /\bNIP\s*[:#-]?\s*(\d{10})\b/i,
-      /\bNumer\s+NIP\s*[:#-]?\s*(\d{10})\b/i,
-      /\bTax\s*(?:ID|number)?\s*[:#-]?\s*(?:PL)?\s*(\d{10})\b/i,
-      /\bVAT\s*[:#-]?\s*(?:PL)?\s*(\d{10})\b/i,
-      /\bPL\s*(\d{10})\b/i
-    ];
+    const nipMatch =
+      noSpacesAroundDigits.match(/\bNIP\s*[:#-]?\s*(\d{10})\b/i) ||
+      noSpacesAroundDigits.match(/\bNumer\s+NIP\s*[:#-]?\s*(\d{10})\b/i) ||
+      noSpacesAroundDigits.match(/\bVAT\s*[:#-]?\s*(?:PL)?\s*(\d{10})\b/i) ||
+      noSpacesAroundDigits.match(/\bPL\s*(\d{10})\b/i);
 
-    const regonPatterns = [
-      /\bREGON\s*[:#-]?\s*(\d{9}|\d{14})\b/i,
-      /\bNumer\s+REGON\s*[:#-]?\s*(\d{9}|\d{14})\b/i
-    ];
+    const regonMatch =
+      noSpacesAroundDigits.match(/\bREGON\s*[:#-]?\s*(\d{9}|\d{14})\b/i) ||
+      noSpacesAroundDigits.match(/\bNumer\s+REGON\s*[:#-]?\s*(\d{9}|\d{14})\b/i);
 
-    for (const pattern of krsPatterns) {
-      const match = noSpacesAroundDigits.match(pattern) || compact.match(pattern);
-      if (match?.[1]) {
-        result.krs = match[1];
-        break;
-      }
-    }
-
-    for (const pattern of nipPatterns) {
-      const match = noSpacesAroundDigits.match(pattern) || compact.match(pattern);
-      if (match?.[1]) {
-        result.nip = match[1];
-        break;
-      }
-    }
-
-    for (const pattern of regonPatterns) {
-      const match = noSpacesAroundDigits.match(pattern) || compact.match(pattern);
-      if (match?.[1]) {
-        result.regon = match[1];
-        break;
-      }
-    }
+    if (krsMatch?.[1]) result.krs = krsMatch[1];
+    if (nipMatch?.[1]) result.nip = nipMatch[1];
+    if (regonMatch?.[1]) result.regon = regonMatch[1];
 
     return result;
   }
@@ -503,17 +241,6 @@ export default async function handler(req, res) {
   function extractGenericIds(text, country) {
     if (country === 'pl') return extractPolishIds(text);
     return { krs: '', nip: '', regon: '' };
-  }
-
-  function buildErrorBase(extra = {}) {
-    return {
-      organization_id: organizationId || null,
-      company_name: name || null,
-      website: website || null,
-      warnings: runtimeWarnings,
-      runtime_ms: Date.now() - startedAt,
-      ...extra
-    };
   }
 
   async function tavilySearch(query, maxResults = 3, includeAnswer = false) {
@@ -532,10 +259,8 @@ export default async function handler(req, res) {
     const data = await response.json().catch(() => ({}));
 
     if (!response.ok) {
-      const message = data?.error || data?.message || `Tavily HTTP ${response.status}`;
-      const err = new Error(message);
+      const err = new Error(data?.error || data?.message || `Tavily HTTP ${response.status}`);
       err.status = response.status;
-      err.data = data;
       throw err;
     }
 
@@ -546,32 +271,40 @@ export default async function handler(req, res) {
     const response = await fetch('https://api.tavily.com/extract', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        api_key: TAVILY_KEY,
-        urls
-      })
+      body: JSON.stringify({ api_key: TAVILY_KEY, urls })
     });
 
     const data = await response.json().catch(() => ({}));
 
     if (!response.ok) {
-      const message = data?.error || data?.message || `Tavily extract HTTP ${response.status}`;
-      const err = new Error(message);
+      const err = new Error(data?.error || data?.message || `Tavily extract HTTP ${response.status}`);
       err.status = response.status;
-      err.data = data;
       throw err;
     }
 
     return data;
   }
 
+  async function getPipedriveOrgFields() {
+    const response = await fetch(`https://${PD_DOMAIN}.pipedrive.com/api/v1/organizationFields?api_token=${PD_TOKEN}`);
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok || !data.success) return [];
+    return data.data || [];
+  }
+
+  function buildBase(extra = {}) {
+    return {
+      organization_id: organizationId || null,
+      company_name: name || null,
+      website: website || null,
+      warnings,
+      runtime_ms: Date.now() - startedAt,
+      ...extra
+    };
+  }
+
   if (!organizationId) {
-    return fail(
-      400,
-      'MISSING_ORGANIZATION_ID',
-      'Missing organizationId.',
-      'Send organizationId in request body from Pipedrive automation.'
-    );
+    return fail(400, 'MISSING_ORGANIZATION_ID', 'Missing organizationId.', 'Send organizationId in request body from Pipedrive automation.');
   }
 
   const missingEnv = [];
@@ -585,16 +318,15 @@ export default async function handler(req, res) {
       200,
       'MISSING_ENV_VARS',
       `Missing required env vars: ${missingEnv.join(', ')}.`,
-      'Open Vercel project settings → Environment Variables and add missing keys. Redeploy after changing env vars.',
+      'Open Vercel project settings -> Environment Variables, add missing keys, then redeploy.',
       { missing_env_vars: missingEnv }
     );
   }
 
-  // Step 0: Get existing org from Pipedrive.
   let existing = {};
+
   try {
-    const pdGetUrl = `https://${PD_DOMAIN}.pipedrive.com/api/v1/organizations/${organizationId}?api_token=${PD_TOKEN}`;
-    const response = await fetch(pdGetUrl);
+    const response = await fetch(`https://${PD_DOMAIN}.pipedrive.com/api/v1/organizations/${organizationId}?api_token=${PD_TOKEN}`);
     const data = await response.json().catch(() => ({}));
 
     if (!response.ok || !data.success) {
@@ -602,8 +334,8 @@ export default async function handler(req, res) {
         200,
         'PIPEDRIVE_FETCH_FAILED',
         `Could not fetch organization from Pipedrive. HTTP ${response.status}.`,
-        'Check PIPEDRIVE_DOMAIN, PIPEDRIVE_API_TOKEN, organizationId, and whether the token has access to organizations.',
-        buildErrorBase({ pipedrive_response: debugMode ? data : undefined })
+        'Check PIPEDRIVE_DOMAIN, PIPEDRIVE_API_TOKEN, organizationId, and token permissions.',
+        buildBase({ pipedrive_response: debugMode ? data : undefined })
       );
     }
 
@@ -615,19 +347,13 @@ export default async function handler(req, res) {
       200,
       'PIPEDRIVE_OR_VERCEL_NETWORK_ERROR',
       `Pipedrive fetch failed: ${error.message}`,
-      'Most likely: bad PIPEDRIVE_DOMAIN, Pipedrive downtime, Vercel network/runtime issue, or invalid org ID.',
-      buildErrorBase()
+      'Most likely: wrong PIPEDRIVE_DOMAIN, Pipedrive downtime, Vercel network issue, or invalid org ID.',
+      buildBase()
     );
   }
 
   if (!name) {
-    return fail(
-      200,
-      'MISSING_COMPANY_NAME',
-      'Company name is missing and could not be loaded from Pipedrive.',
-      'Add organization name in Pipedrive or send name in request body.',
-      buildErrorBase()
-    );
+    return fail(200, 'MISSING_COMPANY_NAME', 'Company name is missing.', 'Add organization name in Pipedrive or send name in request body.', buildBase());
   }
 
   let searchContext = '';
@@ -635,13 +361,15 @@ export default async function handler(req, res) {
   let foundLinkedinUrl = '';
   let registryUrls = [];
   let deterministicIds = { krs: '', nip: '', regon: '' };
-  let countryInfo = getCountryRegistry(website, name);
+  const countryInfo = getCountryRegistry(website, name);
   const websiteDomain = normalizeWebsiteDomain(website);
 
-  // Step 1: Tavily search + registry extraction.
   try {
-    const generalPromise = tavilySearch(`${name} ${website || ''} company healthcare contact phone email address`, 3, true);
-    const linkedinPromise = tavilySearch(`"${name}" site:linkedin.com/company`, 3, false);
+    const generalPromise = tavilySearch(`${name} ${website || ''} company healthcare contact phone email address`, 3, true)
+      .catch((error) => ({ error }));
+
+    const linkedinPromise = tavilySearch(`"${name}" site:linkedin.com/company`, 3, false)
+      .catch((error) => ({ error }));
 
     const registryPromises = [];
 
@@ -672,38 +400,37 @@ export default async function handler(req, res) {
     }
 
     const [generalData, linkedinData, ...registryResults] = await Promise.all([
-      generalPromise.catch((error) => ({ error })),
-      linkedinPromise.catch((error) => ({ error })),
+      generalPromise,
+      linkedinPromise,
       ...registryPromises
     ]);
 
     if (generalData.error) {
-      logWarn('TAVILY_GENERAL_FAILED', 'General Tavily search failed.', { message: generalData.error.message });
+      warn('TAVILY_GENERAL_FAILED', 'General Tavily search failed.', { message: generalData.error.message });
     } else {
       if (generalData.answer) searchContext += `Summary: ${generalData.answer}\n\n`;
       if (generalData.results?.length > 0) {
         searchContext += 'Web results:\n';
-        generalData.results.forEach((result) => {
+        for (const result of generalData.results) {
           searchContext += `- ${result.title}: ${safeString(result.content).substring(0, 300)}\nURL: ${result.url}\n`;
-        });
+        }
       }
     }
 
     const registryCandidates = [];
 
-    registryResults.forEach((entry) => {
+    for (const entry of registryResults) {
       if (entry?.error) {
-        logWarn('TAVILY_REGISTRY_QUERY_FAILED', `Registry query failed for ${entry.registryDomain}.`, {
+        warn('TAVILY_REGISTRY_QUERY_FAILED', `Registry query failed for ${entry.registryDomain}.`, {
           query_type: entry.queryType,
           message: entry.error.message
         });
-        return;
+        continue;
       }
 
-      const results = entry?.data?.results || [];
-      results.forEach((result) => {
+      for (const result of entry?.data?.results || []) {
         const url = safeString(result.url);
-        if (!url) return;
+        if (!url) continue;
 
         let score = 0;
         if (entry.queryType === 'domain') score += 20;
@@ -711,23 +438,19 @@ export default async function handler(req, res) {
         if (entry.registryDomain === 'biznes.gov.pl') score += 30;
         if (entry.registryDomain?.includes('krs') || entry.registryDomain?.includes('ms.gov.pl')) score += 25;
         if (url.includes('gov.pl')) score += 25;
-        if (url.includes('aleo.com')) score -= 20;
+        if (entry.registryDomain === 'rejestr.io' || entry.registryDomain === 'imsig.pl') score += 15;
         if (/krs|nip|regon/i.test(result.title || '')) score += 10;
         if (/krs|nip|regon/i.test(result.content || '')) score += 10;
 
-        registryCandidates.push({
-          ...result,
-          registryDomain: entry.registryDomain,
-          queryType: entry.queryType,
-          score
-        });
-      });
-    });
+        registryCandidates.push({ ...result, registryDomain: entry.registryDomain, queryType: entry.queryType, score });
+      }
+    }
 
     registryCandidates.sort((a, b) => b.score - a.score);
 
     const uniqueRegistryCandidates = [];
     const seenUrls = new Set();
+
     for (const candidate of registryCandidates) {
       if (!candidate.url || seenUrls.has(candidate.url)) continue;
       seenUrls.add(candidate.url);
@@ -737,28 +460,29 @@ export default async function handler(req, res) {
 
     if (uniqueRegistryCandidates.length > 0) {
       registryContext += `\nRegistry data candidates (${countryInfo?.label || 'unknown country'}):\n`;
-      uniqueRegistryCandidates.forEach((result, index) => {
+
+      for (const [index, result] of uniqueRegistryCandidates.entries()) {
         registryContext += `${index + 1}. [${result.registryDomain}] ${result.title}\n${safeString(result.content).substring(0, 500)}\nURL: ${result.url}\n`;
-      });
+      }
 
       registryUrls = uniqueRegistryCandidates.map((candidate) => candidate.url).filter(Boolean);
 
       try {
         const extractData = await tavilyExtract(registryUrls.slice(0, 3));
-        const extracted = extractData.results || [];
 
-        extracted.forEach((item, index) => {
+        for (const [index, item] of (extractData.results || []).entries()) {
           const rawContent = item.raw_content || item.content || '';
-          if (!rawContent) return;
+          if (!rawContent) continue;
+
           registryContext += `\nFull registry extract ${index + 1}:\nURL: ${item.url || registryUrls[index]}\n${rawContent.substring(0, 6000)}\n`;
 
           const ids = extractGenericIds(rawContent, countryInfo?.country);
           if (!deterministicIds.krs && ids.krs) deterministicIds.krs = ids.krs;
           if (!deterministicIds.nip && ids.nip) deterministicIds.nip = ids.nip;
           if (!deterministicIds.regon && ids.regon) deterministicIds.regon = ids.regon;
-        });
+        }
       } catch (error) {
-        logWarn('TAVILY_REGISTRY_EXTRACT_FAILED', 'Tavily registry extract failed.', { message: error.message });
+        warn('TAVILY_REGISTRY_EXTRACT_FAILED', 'Tavily registry extract failed.', { message: error.message });
       }
 
       const idsFromSnippets = extractGenericIds(registryContext, countryInfo?.country);
@@ -768,7 +492,7 @@ export default async function handler(req, res) {
 
       searchContext += `\n${registryContext}`;
     } else if (countryInfo) {
-      logWarn('REGISTRY_NOT_FOUND', 'No registry result found.', {
+      warn('REGISTRY_NOT_FOUND', 'No registry result found.', {
         country: countryInfo.country,
         registries: countryInfo.registries,
         name,
@@ -777,31 +501,12 @@ export default async function handler(req, res) {
     }
 
     if (linkedinData.error) {
-      logWarn('TAVILY_LINKEDIN_FAILED', 'LinkedIn search failed.', { message: linkedinData.error.message });
+      warn('TAVILY_LINKEDIN_FAILED', 'LinkedIn search failed.', { message: linkedinData.error.message });
     } else {
       const liResult = linkedinData.results?.find((result) => result.url?.includes('linkedin.com/company/'));
       if (liResult) {
-        const nameWords = safeString(name)
-          .toLowerCase()
-          .split(/\s+/)
-          .filter((word) => word.length > 3);
-        const titleMatches = nameWords.some((word) => safeString(liResult.title).toLowerCase().includes(word));
-
-        if (titleMatches) {
-          try {
-            const extractData = await tavilyExtract([liResult.url]);
-            const liContent = extractData.results?.[0]?.raw_content || '';
-            const cleanWebsite = normalizeWebsiteDomain(website);
-            const websiteMatch = cleanWebsite && liContent.toLowerCase().includes(cleanWebsite.toLowerCase());
-
-            if (websiteMatch || !cleanWebsite) {
-              foundLinkedinUrl = liResult.url;
-              searchContext += `\nLinkedIn: ${liResult.url}\n`;
-            }
-          } catch (error) {
-            logWarn('LINKEDIN_EXTRACT_FAILED', 'LinkedIn extract failed.', { message: error.message });
-          }
-        }
+        foundLinkedinUrl = liResult.url;
+        searchContext += `\nLinkedIn: ${liResult.url}\n`;
       }
     }
   } catch (error) {
@@ -812,18 +517,17 @@ export default async function handler(req, res) {
       `Tavily/search step failed: ${error.message}`,
       isCreditOrLimit
         ? 'Check TAVILY_API_KEY and Tavily credits/limits. If credits are finished, add credits or update the key in Vercel env vars.'
-        : 'Most likely: Tavily temporary issue, Vercel timeout/network issue, or malformed search response. Check Vercel function logs.',
-      buildErrorBase({ tavily_status: error.status || null })
+        : 'Most likely: Tavily temporary issue, Vercel timeout/network issue, or malformed response. Check Vercel runtime logs.',
+      buildBase({ tavily_status: error.status || null })
     );
   }
 
   const fullSearchContextLength = searchContext.length;
   searchContext = searchContext.slice(0, 9000);
 
-  // Step 2: AI enrichment.
   let enriched = {};
 
-  const errorBase = buildErrorBase({
+  const errorBase = buildBase({
     fields_filled: 0,
     tavily_used: !!searchContext,
     registry_used: !!registryContext,
@@ -834,15 +538,15 @@ export default async function handler(req, res) {
       debug: {
         country_info: countryInfo,
         full_search_context_length: fullSearchContextLength,
-        registry_context: registryContext.substring(0, 2000),
-        search_context: searchContext.substring(0, 1500)
+        registry_context: registryContext.substring(0, 3000),
+        search_context: searchContext.substring(0, 2000)
       }
     })
   });
 
   try {
     const polishRules = countryInfo?.country === 'pl'
-      ? `\nPOLAND RULES:\n- KRS = registration_number. It is exactly 10 digits.\n- NIP = vat. It is exactly 10 digits; may appear as NIP or PL + 10 digits.\n- REGON is a separate statistical/company identifier. Do NOT put REGON into registration_number if KRS exists.\n- Look for Polish labels: KRS, Numer KRS, NIP, Numer NIP, REGON, Siedziba, Adres, Zarząd, Prezes Zarządu.\n- Prefer official Polish government sources: biznes.gov.pl, wyszukiwarka-krs.ms.gov.pl, ekrs.ms.gov.pl, ems.ms.gov.pl.\n`
+      ? `\nPOLAND RULES:\n- KRS = registration_number. Exactly 10 digits.\n- NIP = vat. Exactly 10 digits; may appear as NIP or PL + 10 digits.\n- REGON is separate. Do NOT use REGON as registration_number.\n- Look for: KRS, Numer KRS, NIP, Numer NIP, REGON, Siedziba, Adres, Zarząd, Prezes Zarządu.\n`
       : '';
 
     const prompt = `You are a B2B healthcare CRM specialist. Return ONLY valid JSON, no markdown, no explanation.
@@ -862,14 +566,14 @@ ${searchContext ? `\nContext, including official registry data if available:\n${
 
 IMPORTANT:
 - License Agreement fields: fill ONLY from official registry or website sources in context. Leave "" if not found.
-- ceo_name: extract from registry if available. Look for Director, CEO, President of the Management Board, Prezes Zarządu, Zarząd.
-- vat: extract TAX ID / NIP / VAT number from registry. For Poland use NIP, not KRS and not REGON.
+- ceo_name: extract from registry if available.
+- vat: extract TAX ID / NIP / VAT number from registry. For Poland use NIP.
 - registration_number: extract KRS / National Court Register number from registry. For Poland use KRS only, not REGON.
 - address: extract legal/registered address from registry.
-- qualify_status: set based on contact info found. Use 724 when both email and phone found, 725 when phone only, 63 when email only, 62 when generic contact info exists, 57 when needs qualification.
+- qualify_status: use 724 when both email and phone found, 725 phone only, 63 email only, 62 contact exists, 57 otherwise.
 - annual_revenue: use 2=1-10M USD, 3=10-100M, 4=100-1000M, 5=1-10B. Use 0 if below 1M USD or unknown.
 
-Return JSON with this exact shape:
+Return JSON:
 {
   "industry": 11,
   "annual_revenue": 0,
@@ -894,19 +598,7 @@ Return JSON with this exact shape:
   "number_of_branches": 0,
   "number_of_specialists": 0,
   "company_overview": ""
-}
-
-ID mappings:
-industry: 11=Healthcare, 14=Professional Services, 17=Technology
-annual_revenue: 2=1-10M USD, 3=10-100M USD, 4=100-1000M USD, 5=1-10B USD. Use 0 if below 1M or unknown.
-employees_category: 49=1-10, 50=11-50, 51=51-200, 52=201-500, 53=501-1000, 54=1001-5000, 55=5001-10000, 56=10001+
-icp: 64=Yes, 65=No, 371=No-too-small, 66=Unknown
-ownership: 1014=Private, 1015=Public, 1016=Unknown
-icp_type: 1017=Hospital, 935=Clinic/Polyclinic, 1018=Specialist Practice, 520=Dental Clinic, 932=Diagnostic Center, 939=HIS Software Provider, 937=Nursing Home, 936=Dialysis Clinic, 1019=Physiotherapy Clinic, 1020=Aesthetic Surgery Clinic, 1021=Ophthalmology Clinic, 1022=Radiology Center, 1023=Rehabilitation Center, 1024=Mental Health Clinic, 934=Maternity/IVF Clinic, 931=Home Care, 1025=Government Health Center, 1026=University/Teaching Hospital, 1027=Non-Profit/NGO, 1029=Occupational Health Center, 1030=Hospice/Palliative Care, 1028=Unknown
-qualify_status: 57=To qualify, 61=Qualified no contact, 62=Qualified with contact, 63=Qualified with contact+email, 724=Qualified with contact+email+phone, 725=Qualified with contact+phone
-org_source: always 546
-icp_ecosystem: 854=Healthcare ecosystem, 855=Healthcare software vendors, 0=not applicable
-his_identification: 850=Yes, 851=No`;
+}`;
 
     const aiRes = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -927,13 +619,7 @@ his_identification: 850=Yes, 851=No`;
     console.log('OpenAI status:', aiRes.status);
 
     if (aiRes.status === 401) {
-      return fail(
-        200,
-        'OPENAI_KEY_INVALID',
-        'OpenAI API key invalid or expired.',
-        'Check OPENAI_API_KEY in Vercel env vars, then redeploy.',
-        errorBase
-      );
+      return fail(200, 'OPENAI_KEY_INVALID', 'OpenAI API key invalid or expired.', 'Check OPENAI_API_KEY in Vercel env vars, then redeploy.', errorBase);
     }
 
     if (aiRes.status === 429) {
@@ -941,7 +627,7 @@ his_identification: 850=Yes, 851=No`;
         200,
         'OPENAI_CREDIT_LIMIT_DELETED',
         'Credit limit deleated, contact petras to add more.',
-        'OpenAI quota/rate limit reached. Contact Petras to add more credit or check platform.openai.com/usage. Also check if the key belongs to the correct OpenAI project.',
+        'OpenAI quota/rate limit reached. Contact Petras to add more credit or check platform.openai.com/usage.',
         { ...errorBase, openai_error: aiData.error?.message || null }
       );
     }
@@ -956,4 +642,301 @@ his_identification: 850=Yes, 851=No`;
       );
     }
 
-    if (
+    if (aiRes.status === 500 || aiRes.status === 503) {
+      return fail(200, 'OPENAI_TEMPORARY_ERROR', `OpenAI temporary error ${aiRes.status}.`, 'Try again shortly. Check OpenAI status and Vercel logs if repeated.', errorBase);
+    }
+
+    if (!aiRes.ok) {
+      return fail(200, 'OPENAI_UNKNOWN_ERROR', `OpenAI error ${aiRes.status}: ${aiData.error?.message || 'Unknown'}`, 'Check OpenAI logs/usage, OPENAI_API_KEY, OPENAI_MODEL, and Vercel logs.', errorBase);
+    }
+
+    const content = aiData.choices?.[0]?.message?.content || '{}';
+    enriched = JSON.parse(content.replace(/```json\n?|\n?```/g, '').trim());
+  } catch (error) {
+    return fail(
+      200,
+      'AI_PARSE_OR_VERCEL_RUNTIME_ERROR',
+      `AI failed: ${error.message}`,
+      'Most likely: OpenAI returned invalid JSON, Vercel runtime problem, timeout, or unsupported model response. Use debug=true and check Vercel logs.',
+      errorBase
+    );
+  }
+
+  if (countryInfo?.country === 'pl') {
+    if (deterministicIds.krs) enriched.registration_number = deterministicIds.krs;
+    if (deterministicIds.nip) enriched.vat = deterministicIds.nip;
+
+    if (enriched.registration_number && deterministicIds.regon && String(enriched.registration_number) === String(deterministicIds.regon)) {
+      enriched.registration_number = deterministicIds.krs || '';
+      warn('POLISH_REGON_BLOCKED', 'AI tried to use REGON as registration_number. Blocked.', {
+        regon: deterministicIds.regon,
+        krs: deterministicIds.krs
+      });
+    }
+  }
+
+  const healthcareTypes = [1017, 935, 1018, 520, 932, 937, 936, 1019, 1020, 1021, 1022, 1023, 1024, 934, 931, 1025, 1026, 1027, 1029, 1030];
+
+  if (healthcareTypes.includes(enriched.icp_type)) enriched.icp = 64;
+
+  if (enriched.icp_type === 939) enriched.icp_ecosystem = 855;
+  else if (healthcareTypes.includes(enriched.icp_type)) enriched.icp_ecosystem = 854;
+  else enriched.icp_ecosystem = null;
+
+  if (isPrivateLegalForm(name) && enriched.ownership === 1016) enriched.ownership = 1014;
+
+  if (Number(enriched.employee_count) > 0) {
+    enriched.employees_category = employeesToCategory(enriched.employee_count);
+  } else if (Number(existing.employee_count) > 0 && isEmptyAI(enriched.employees_category)) {
+    enriched.employees_category = employeesToCategory(existing.employee_count);
+  }
+
+  async function validateLinkedIn(url) {
+    if (!url) return '';
+    const clean = safeString(url).split('?')[0].replace(/\/$/, '');
+    if (!clean.includes('linkedin.com/company/')) return '';
+    const slug = clean.split('linkedin.com/company/')[1]?.split('/')[0];
+    if (!slug || ['unavailable', 'login', 'authwall', '404', 'null', 'undefined', 'company'].includes(slug.toLowerCase())) return '';
+    return `https://www.linkedin.com/company/${slug}/`;
+  }
+
+  const finalLinkedin = await validateLinkedIn(foundLinkedinUrl);
+
+  const payload = {};
+  const payloadDecisions = [];
+
+  function rememberDecision(label, key, value, existingValue, action, reason = '') {
+    payloadDecisions.push({
+      label,
+      key: key || '(missing key)',
+      new_value: value ?? null,
+      existing_value: existingValue ?? null,
+      action,
+      reason
+    });
+  }
+
+  function setIfEmpty(key, value, existingValue, label = key) {
+    if (isEmptyAI(value)) {
+      rememberDecision(label, key, value, existingValue, 'skip', 'new value empty');
+      return;
+    }
+    if (!isEmpty(existingValue)) {
+      rememberDecision(label, key, value, existingValue, 'skip', 'existing value not empty');
+      return;
+    }
+    payload[key] = value;
+    rememberDecision(label, key, value, existingValue, 'set');
+  }
+
+  function setCfIfEmpty(key, value, existingValue, label = 'custom_field') {
+    if (!key) {
+      rememberDecision(label, key, value, existingValue, 'skip', 'missing field key');
+      return;
+    }
+    if (isEmptyAI(value)) {
+      rememberDecision(label, key, value, existingValue, 'skip', 'new value empty');
+      return;
+    }
+    if (!isEmpty(existingValue)) {
+      rememberDecision(label, key, value, existingValue, 'skip', 'existing value not empty');
+      return;
+    }
+    payload[key] = value;
+    rememberDecision(label, key, value, existingValue, 'set');
+  }
+
+  setIfEmpty('industry', enriched.industry, existing.industry, 'Industry');
+
+  if (Number(enriched.annual_revenue) > 1 && (isEmpty(existing.annual_revenue) || Number(existing.annual_revenue) === 0)) {
+    payload.annual_revenue = enriched.annual_revenue;
+    rememberDecision('Annual revenue', 'annual_revenue', enriched.annual_revenue, existing.annual_revenue, 'set');
+  }
+
+  setIfEmpty('employee_count', Number(enriched.employee_count) > 0 ? enriched.employee_count : null, existing.employee_count, 'Employee count');
+  setIfEmpty('linkedin', finalLinkedin, existing.linkedin, 'LinkedIn standard field');
+
+  if (!isEmpty(enriched.phone) && isEmpty(existing.phone?.[0]?.value)) {
+    payload.phone = [{ value: enriched.phone, primary: true, label: 'work' }];
+    rememberDecision('Phone standard field', 'phone', enriched.phone, existing.phone?.[0]?.value, 'set');
+  }
+
+  if (!isEmpty(enriched.address) && isEmpty(existing.address?.value)) {
+    payload.address = enriched.address;
+    rememberDecision('Address standard field', 'address', enriched.address, existing.address?.value, 'set');
+  }
+
+  setCfIfEmpty(FIELD.icp, enriched.icp, existing[FIELD.icp], 'ICP');
+  setCfIfEmpty(FIELD.ownership, enriched.ownership, existing[FIELD.ownership], 'Ownership');
+  setCfIfEmpty(FIELD.icp_type, enriched.icp_type, existing[FIELD.icp_type], 'ICP Type');
+  setCfIfEmpty(FIELD.qualify_status, enriched.qualify_status, existing[FIELD.qualify_status], 'Qualify status');
+  setCfIfEmpty(FIELD.employees_category, enriched.employees_category, existing[FIELD.employees_category], 'Employees category');
+  setCfIfEmpty(FIELD.org_source, enriched.org_source, existing[FIELD.org_source], 'Organization source');
+  setCfIfEmpty(FIELD.icp_ecosystem, enriched.icp_ecosystem, existing[FIELD.icp_ecosystem], 'ICP ecosystem');
+  setCfIfEmpty(FIELD.his_identification, enriched.his_identification, existing[FIELD.his_identification], 'HIS identification');
+  setCfIfEmpty(FIELD.linkedin, finalLinkedin, existing[FIELD.linkedin], 'Company LinkedIn Profile URL');
+  setCfIfEmpty(FIELD.website, website || '', existing[FIELD.website], 'Website');
+  setCfIfEmpty(FIELD.phone, enriched.phone, existing[FIELD.phone], 'Phone custom field');
+  setCfIfEmpty(FIELD.email, enriched.email, existing[FIELD.email], 'Company mail');
+  setCfIfEmpty(FIELD.company_legal_name, enriched.company_legal_name, existing[FIELD.company_legal_name], 'Company legal name');
+  setCfIfEmpty(FIELD.his_software_name, enriched.his_software_name, existing[FIELD.his_software_name], 'HIS/RIS/LIS/PACS software');
+  setCfIfEmpty(FIELD.ceo_name, enriched.ceo_name, existing[FIELD.ceo_name], 'CEO for contract');
+  setCfIfEmpty(FIELD.address, enriched.address, existing[FIELD.address], 'Address for license agreement');
+  setCfIfEmpty(FIELD.vat, enriched.vat, existing[FIELD.vat], 'VAT');
+  setCfIfEmpty(FIELD.registration_number, enriched.registration_number, existing[FIELD.registration_number], 'Registration number');
+  setCfIfEmpty(FIELD.krs_number, enriched.registration_number || deterministicIds.krs, existing[FIELD.krs_number], 'KRS number');
+
+  if (Number(enriched.number_of_beds) > 0) setCfIfEmpty(FIELD.number_of_beds, enriched.number_of_beds, existing[FIELD.number_of_beds], 'Number of beds');
+  if (Number(enriched.number_of_branches) > 0) setCfIfEmpty(FIELD.number_of_branches, enriched.number_of_branches, existing[FIELD.number_of_branches], 'Number of branches');
+  if (Number(enriched.number_of_specialists) > 0) setCfIfEmpty(FIELD.number_of_specialists, enriched.number_of_specialists, existing[FIELD.number_of_specialists], 'Number of specialists');
+
+  console.log('================ DEBUG ENRICH =================');
+  console.log('COMPANY:', name);
+  console.log('COUNTRY:', countryInfo);
+  console.log('DETERMINISTIC IDS:', deterministicIds);
+  console.log('AI RESPONSE:', JSON.stringify(enriched, null, 2));
+  console.log('EXISTING VAT:', existing[FIELD.vat]);
+  console.log('EXISTING REGISTRATION:', existing[FIELD.registration_number]);
+  console.log('EXISTING KRS:', FIELD.krs_number ? existing[FIELD.krs_number] : 'NO KRS FIELD KEY SET');
+  console.log('PAYLOAD DECISIONS:', JSON.stringify(payloadDecisions, null, 2));
+  console.log('FINAL PAYLOAD:', JSON.stringify(payload, null, 2));
+  console.log('================ END DEBUG =================');
+
+  let pipedriveUpdateData = null;
+
+  if (Object.keys(payload).length > 0) {
+    try {
+      const pdRes = await fetch(`https://${PD_DOMAIN}.pipedrive.com/api/v1/organizations/${organizationId}?api_token=${PD_TOKEN}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      pipedriveUpdateData = await pdRes.json().catch(() => ({}));
+
+      if (!pdRes.ok || !pipedriveUpdateData.success) {
+        return fail(
+          200,
+          'PIPEDRIVE_UPDATE_FAILED',
+          `Pipedrive update failed. HTTP ${pdRes.status}.`,
+          'Check field keys, option IDs, field types, and token permissions. See debug.payload_decisions.',
+          buildBase({
+            fields_attempted: Object.keys(payload),
+            payload_decisions: payloadDecisions,
+            pipedrive_response: debugMode ? pipedriveUpdateData : undefined,
+            payload: debugMode ? payload : undefined,
+            ai_response: debugMode ? enriched : undefined
+          })
+        );
+      }
+    } catch (error) {
+      return fail(
+        200,
+        'PIPEDRIVE_UPDATE_NETWORK_OR_VERCEL_ERROR',
+        `Pipedrive update request failed: ${error.message}`,
+        'Most likely: Vercel network issue, Pipedrive timeout, wrong domain, or invalid token.',
+        buildBase({ fields_attempted: Object.keys(payload), payload_decisions: payloadDecisions })
+      );
+    }
+  }
+
+  let noteAdded = false;
+
+  if (enriched.company_overview) {
+    try {
+      const notesRes = await fetch(`https://${PD_DOMAIN}.pipedrive.com/api/v1/notes?api_token=${PD_TOKEN}&org_id=${organizationId}&limit=10`);
+      const notesData = await notesRes.json().catch(() => ({}));
+      const hasAiNote = notesData.data?.some((note) => note.content?.includes('🤖 AI Enrichment'));
+
+      if (!hasAiNote) {
+        const sources = ['Tavily web search', process.env.OPENAI_MODEL || 'OpenAI gpt-4o-mini'];
+        if (countryInfo?.registries?.length) sources.push(`${countryInfo.registries.join(', ')} registry search`);
+        if (foundLinkedinUrl) sources.push('LinkedIn');
+        if (deterministicIds.krs || deterministicIds.nip || deterministicIds.regon) sources.push('deterministic KRS/NIP/REGON regex extraction');
+
+        const noteContent = `🤖 AI Enrichment\n\n${enriched.company_overview}\n\n📊 Sources: ${sources.join(', ')}`;
+
+        const createNoteRes = await fetch(`https://${PD_DOMAIN}.pipedrive.com/api/v1/notes?api_token=${PD_TOKEN}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ content: noteContent, org_id: organizationId })
+        });
+
+        const createNoteData = await createNoteRes.json().catch(() => ({}));
+        noteAdded = !!createNoteData.success;
+      }
+    } catch (error) {
+      warn('PIPEDRIVE_NOTE_FAILED', 'AI note step failed.', { message: error.message });
+    }
+  }
+
+  const emptyImportantFields = [];
+  if (!enriched.vat) emptyImportantFields.push('vat');
+  if (!enriched.registration_number) emptyImportantFields.push('registration_number');
+  if (!enriched.ceo_name) emptyImportantFields.push('ceo_name');
+  if (!enriched.address) emptyImportantFields.push('address');
+
+  let orgFieldHints = [];
+
+  if (debugMode) {
+    try {
+      const orgFields = await getPipedriveOrgFields();
+      orgFieldHints = orgFields
+        .filter((field) => /krs|vat|registration|regon|nip/i.test(field.name || ''))
+        .map((field) => ({ name: field.name, key: field.key, field_type: field.field_type }));
+      console.log('PIPEDRIVE ORG FIELD HINTS:', JSON.stringify(orgFieldHints, null, 2));
+    } catch (error) {
+      warn('ORG_FIELD_HINTS_FAILED', 'Could not fetch organization field hints.', { message: error.message });
+    }
+  }
+
+  let alert = null;
+
+  if (countryInfo?.country === 'pl' && (!enriched.vat || !enriched.registration_number)) {
+    alert = {
+      scenario: 'POLISH_IDS_NOT_FULLY_FOUND',
+      message: 'Polish enrichment finished, but KRS/NIP was not fully found.',
+      solution: 'Check debug.registry_context and deterministic_ids. If official page data exists but extract is empty, Tavily cannot read the dynamic official page.'
+    };
+  } else if (!FIELD.krs_number && countryInfo?.country === 'pl') {
+    alert = {
+      scenario: 'KRS_FIELD_KEY_NOT_SET',
+      message: 'KRS was found, but separate KRS field key is not configured.',
+      solution: 'Run with debug=true, check debug.org_field_hints, copy the KRS number field key to Vercel env var PD_FIELD_KRS_NUMBER, then redeploy.'
+    };
+  } else if (Object.keys(payload).length === 0) {
+    alert = {
+      scenario: 'NOTHING_TO_UPDATE',
+      message: 'Enrichment ran, but no empty Pipedrive fields could be filled.',
+      solution: 'Fields may already be filled, existing values may not be truly empty, or field keys may be wrong. Check debug.payload_decisions.'
+    };
+  }
+
+  return res.status(200).json({
+    success: true,
+    fields_filled: Object.keys(payload).length,
+    fields_attempted: Object.keys(payload),
+    tavily_used: !!searchContext,
+    registry_used: !!registryContext,
+    registry_urls: registryUrls,
+    linkedin_found: !!finalLinkedin,
+    deterministic_ids: deterministicIds,
+    empty_important_fields: emptyImportantFields,
+    alert,
+    warnings,
+    note_added: noteAdded,
+    runtime_ms: Date.now() - startedAt,
+    ...(debugMode && {
+      debug: {
+        country_info: countryInfo,
+        registry_context: registryContext.substring(0, 3000),
+        search_context: searchContext.substring(0, 2000),
+        ai_response: enriched,
+        payload,
+        payload_decisions: payloadDecisions,
+        org_field_hints: orgFieldHints,
+        pipedrive_update_response: pipedriveUpdateData
+      }
+    })
+  });
+}

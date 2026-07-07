@@ -45,28 +45,29 @@ export default function handler(req, res) {
   <script>
     let sdk, orgId, orgName, orgWebsite;
 
+    // Backend: Make.com scenario "Pipedrive Enrich Button" (team Sales, eu2).
+    const BACKEND_URL = 'https://hook.eu2.make.com/gqlvtwea4ii97221qqttjmg19738sfe5';
+
     // Short human titles per backend error scenario.
     const SCENARIO_TITLES = {
-      MISSING_ENV_VARS: 'Server not configured — env vars missing in Vercel',
       MISSING_ORGANIZATION_ID: 'No organization ID — open this panel from an organization page',
       MISSING_COMPANY_NAME: 'Organization has no name in Pipedrive',
-      PIPEDRIVE_TOKEN_INVALID: 'Pipedrive API token invalid — update it in Vercel',
+      PIPEDRIVE_TOKEN_INVALID: 'Pipedrive API token invalid — update it in the Make scenario',
       PIPEDRIVE_ORG_NOT_FOUND: 'Organization not found in Pipedrive',
       PIPEDRIVE_FETCH_FAILED: 'Cannot read organization from Pipedrive',
-      PIPEDRIVE_OR_VERCEL_NETWORK_ERROR: 'Network problem between Vercel and Pipedrive',
       PIPEDRIVE_UPDATE_FAILED: 'Pipedrive refused the field update',
-      PIPEDRIVE_UPDATE_FAILED_AFTER_RETRY: 'Pipedrive refused the field update',
-      PIPEDRIVE_UPDATE_NETWORK_OR_VERCEL_ERROR: 'Network problem while saving to Pipedrive',
-      TAVILY_CREDIT_OR_AUTH_PROBLEM: 'Tavily (web search) key or credits problem',
-      TAVILY_OR_VERCEL_RUNTIME_ERROR: 'Web search step failed (Tavily/Vercel)',
-      AI_KEY_INVALID: 'GPT key invalid — update it in Vercel',
+      AI_KEY_INVALID: 'GPT key invalid — update it in the Make scenario',
       AI_CREDITS_REQUIRED: 'Need to add credits to GPT',
-      AI_CREDIT_OR_RATE_LIMIT: 'Need to add credits to GPT (or rate limit)',
+      AI_CREDIT_OR_RATE_LIMIT: 'GPT key invalid or need to add credits to GPT',
       AI_BAD_REQUEST: 'GPT request rejected — check model settings',
       AI_TEMPORARY_ERROR: 'GPT temporarily down — try again',
-      AI_UNKNOWN_ERROR: 'GPT error',
-      AI_PARSE_OR_VERCEL_RUNTIME_ERROR: 'GPT answer unreadable or Vercel runtime problem'
+      AI_UNKNOWN_ERROR: 'GPT error'
     };
+
+    // Strip characters that would break JSON embedding on the backend.
+    function clean(s) {
+      return String(s || '').replace(/["\\\\\\n\\r\\t]/g, "'");
+    }
 
     async function init() {
       sdk = await AppExtensionsSDK().initialize({ size: { height: 80 } });
@@ -105,13 +106,13 @@ export default function handler(req, res) {
       try {
         let res;
         try {
-          res = await fetch('https://pipedrive-enrich-app.vercel.app/api/enrich', {
+          res = await fetch(BACKEND_URL, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ organizationId: String(orgId), name: orgName, website: orgWebsite })
+            body: JSON.stringify({ organizationId: String(orgId), name: clean(orgName), website: clean(orgWebsite) })
           });
         } catch (networkErr) {
-          showError('Vercel is not working / unreachable', 'The app backend on Vercel did not answer at all. Check vercel.com status and the pipedrive-enrich-app project deployments. (' + networkErr.message + ')');
+          showError('Make.com is not reachable', 'The Make.com webhook did not answer at all. Check make.com status and that the scenario "Pipedrive Enrich Button" is turned ON. (' + networkErr.message + ')');
           btn.textContent = '🤖 Enrich with AI';
           btn.disabled = false;
           return;
@@ -121,7 +122,7 @@ export default function handler(req, res) {
         try {
           data = await res.json();
         } catch (parseErr) {
-          showError('Vercel error ' + res.status + ' — backend crashed', 'The backend answered HTTP ' + res.status + ' without valid JSON. Check Vercel runtime logs for api/enrich.');
+          showError('Make.com scenario crashed (HTTP ' + res.status + ')', 'The Make.com scenario answered without valid JSON — it probably stopped mid-run or is turned OFF. Open Make.com -> scenario "Pipedrive Enrich Button" -> History to see the failed run.');
           btn.textContent = '🤖 Enrich with AI';
           btn.disabled = false;
           return;

@@ -20,9 +20,21 @@ export default async function handler(req, res) {
   let { name, website } = req.body || {};
 
   const OPENAI_KEY = process.env.OPENAI_API_KEY;
+  const GATEWAY_KEY = process.env.AI_GATEWAY_API_KEY;
   const PD_TOKEN = process.env.PIPEDRIVE_API_TOKEN;
   const PD_DOMAIN = process.env.PIPEDRIVE_DOMAIN;
   const TAVILY_KEY = process.env.TAVILY_API_KEY;
+
+  // AI provider: prefer Vercel AI Gateway when AI_GATEWAY_API_KEY is set, otherwise direct OpenAI.
+  const useGateway = !!GATEWAY_KEY;
+  const aiProvider = useGateway ? 'Vercel AI Gateway' : 'OpenAI';
+  const aiUrl = useGateway
+    ? 'https://ai-gateway.vercel.sh/v1/chat/completions'
+    : 'https://api.openai.com/v1/chat/completions';
+  const baseModel = process.env.OPENAI_MODEL || 'gpt-4o-mini';
+  // The gateway needs vendor-prefixed model ids, e.g. openai/gpt-4o-mini.
+  const aiModel = useGateway && !baseModel.includes('/') ? `openai/${baseModel}` : baseModel;
+  const aiKey = useGateway ? GATEWAY_KEY : OPENAI_KEY;
 
   const FIELD = {
     website: '783923cad610ca666dc3ddac86085a6468c7b809',
@@ -308,7 +320,7 @@ export default async function handler(req, res) {
   }
 
   const missingEnv = [];
-  if (!OPENAI_KEY) missingEnv.push('OPENAI_API_KEY');
+  if (!OPENAI_KEY && !GATEWAY_KEY) missingEnv.push('OPENAI_API_KEY (or AI_GATEWAY_API_KEY)');
   if (!PD_TOKEN) missingEnv.push('PIPEDRIVE_API_TOKEN');
   if (!PD_DOMAIN) missingEnv.push('PIPEDRIVE_DOMAIN');
   if (!TAVILY_KEY) missingEnv.push('TAVILY_API_KEY');
@@ -328,6 +340,26 @@ export default async function handler(req, res) {
   try {
     const response = await fetch(`https://${PD_DOMAIN}.pipedrive.com/api/v1/organizations/${organizationId}?api_token=${PD_TOKEN}`);
     const data = await response.json().catch(() => ({}));
+
+    if (response.status === 401) {
+      return fail(
+        200,
+        'PIPEDRIVE_TOKEN_INVALID',
+        'Pipedrive API token is invalid or expired (Pipedrive answered 401 unauthorized).',
+        'Get a fresh token in Pipedrive (Profile picture -> Personal preferences -> API), update PIPEDRIVE_API_TOKEN in Vercel project settings -> Environment Variables, then redeploy.',
+        buildBase({ pipedrive_response: debugMode ? data : undefined })
+      );
+    }
+
+    if (response.status === 404) {
+      return fail(
+        200,
+        'PIPEDRIVE_ORG_NOT_FOUND',
+        `Organization ${organizationId} not found in Pipedrive (404).`,
+        'The organization may be deleted or merged. Open the organization in Pipedrive and retry from its page.',
+        buildBase({ pipedrive_response: debugMode ? data : undefined })
+      );
+    }
 
     if (!response.ok || !data.success) {
       return fail(
@@ -606,14 +638,14 @@ Return JSON:
   "company_overview": ""
 }`;
 
-    const aiRes = await fetch('https://api.openai.com/v1/chat/completions', {
+    const aiRes = await fetch(aiUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${OPENAI_KEY}`
+        Authorization: `Bearer ${aiKey}`
       },
       body: JSON.stringify({
-        model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
+        model: aiModel,
         messages: [{ role: 'user', content: prompt }],
         temperature: 0.1,
         max_tokens: 1000,
@@ -622,38 +654,63 @@ Return JSON:
     });
 
     const aiData = await aiRes.json().catch(() => ({}));
-    console.log('OpenAI status:', aiRes.status);
+    console.log(`${aiProvider} status:`, aiRes.status);
+
+    const aiErrMessage = aiData.error?.message || '';
+    const aiErrType = aiData.error?.type || '';
 
     if (aiRes.status === 401) {
-      return fail(200, 'OPENAI_KEY_INVALID', 'OpenAI API key invalid or expired.', 'Check OPENAI_API_KEY in Vercel env vars, then redeploy.', errorBase);
+      return fail(
+        200,
+        'AI_KEY_INVALID',
+        `${aiProvider} API key invalid or expired.`,
+        useGateway
+          ? 'Check AI_GATEWAY_API_KEY in Vercel env vars (Vercel dashboard -> AI Gateway -> API Keys), then redeploy.'
+          : 'Check OPENAI_API_KEY in Vercel env vars, then redeploy.',
+        errorBase
+      );
+    }
+
+    if (aiRes.status === 402 || aiErrType === 'customer_verification_required' || /credit card|add credits|insufficient credit|balance/i.test(aiErrMessage)) {
+      return fail(
+        200,
+        'AI_CREDITS_REQUIRED',
+        `Need to add credits to GPT (${aiProvider}). ${aiErrMessage || ''}`.trim(),
+        useGateway
+          ? 'Vercel AI Gateway has no credits/no credit card on file. Open vercel.com -> your team -> AI Gateway and add a credit card / credits, then retry.'
+          : 'OpenAI account has no credits. Add credits at platform.openai.com/settings/organization/billing, then retry.',
+        { ...errorBase, ai_error: aiErrMessage || null }
+      );
     }
 
     if (aiRes.status === 429) {
       return fail(
         200,
-        'OPENAI_CREDIT_LIMIT_DELETED',
-        'Credit limit deleated, contact petras to add more.',
-        'OpenAI quota/rate limit reached. Contact Petras to add more credit or check platform.openai.com/usage.',
-        { ...errorBase, openai_error: aiData.error?.message || null }
+        'AI_CREDIT_OR_RATE_LIMIT',
+        `Need to add credits to GPT, or rate limit hit (${aiProvider} answered 429).`,
+        useGateway
+          ? 'Vercel AI Gateway quota/rate limit reached. Check AI Gateway usage in the Vercel dashboard and top up credits, or wait a minute and retry.'
+          : 'OpenAI quota/rate limit reached. Contact Petras to add more credit or check platform.openai.com/usage.',
+        { ...errorBase, ai_error: aiErrMessage || null }
       );
     }
 
     if (aiRes.status === 400) {
       return fail(
         200,
-        'OPENAI_BAD_REQUEST',
-        `OpenAI bad request: ${aiData.error?.message || 'Unknown error'}`,
+        'AI_BAD_REQUEST',
+        `${aiProvider} bad request: ${aiErrMessage || 'Unknown error'}`,
         'Most likely prompt too large, wrong model name, or unsupported response_format. Check OPENAI_MODEL and Vercel logs.',
         errorBase
       );
     }
 
     if (aiRes.status === 500 || aiRes.status === 503) {
-      return fail(200, 'OPENAI_TEMPORARY_ERROR', `OpenAI temporary error ${aiRes.status}.`, 'Try again shortly. Check OpenAI status and Vercel logs if repeated.', errorBase);
+      return fail(200, 'AI_TEMPORARY_ERROR', `${aiProvider} temporary error ${aiRes.status}.`, 'Try again shortly. Check provider status page and Vercel logs if repeated.', errorBase);
     }
 
     if (!aiRes.ok) {
-      return fail(200, 'OPENAI_UNKNOWN_ERROR', `OpenAI error ${aiRes.status}: ${aiData.error?.message || 'Unknown'}`, 'Check OpenAI logs/usage, OPENAI_API_KEY, OPENAI_MODEL, and Vercel logs.', errorBase);
+      return fail(200, 'AI_UNKNOWN_ERROR', `${aiProvider} error ${aiRes.status}: ${aiErrMessage || 'Unknown'}`, 'Check AI provider logs/usage, the API key env var, OPENAI_MODEL, and Vercel logs.', errorBase);
     }
 
     const content = aiData.choices?.[0]?.message?.content || '{}';
@@ -973,7 +1030,7 @@ Return JSON:
       const hasAiNote = notesData.data?.some((note) => note.content?.includes('🤖 AI Enrichment'));
 
       if (!hasAiNote) {
-        const sources = ['Tavily web search', process.env.OPENAI_MODEL || 'OpenAI gpt-4o-mini'];
+        const sources = ['Tavily web search', `${aiProvider} ${aiModel}`];
         if (countryInfo?.registries?.length) sources.push(`${countryInfo.registries.join(', ')} registry search`);
         if (foundLinkedinUrl) sources.push('LinkedIn');
         if (deterministicIds.krs || deterministicIds.nip || deterministicIds.regon) sources.push('deterministic KRS/NIP/REGON regex extraction');
